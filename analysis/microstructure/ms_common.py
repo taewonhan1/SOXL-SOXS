@@ -352,6 +352,10 @@ def focus_lines(ax, series: dict, label_ends: bool = True, logy: bool = False):
                         fontsize=7.5, color=c if T in FOCUS_COLORS else TEXT_SECONDARY, va="center",
                         fontweight="bold" if T in FOCUS_COLORS else "normal",
                         arrowprops=dict(arrowstyle="-", color="#d0cfca", lw=0.5))
+    if logy:
+        from matplotlib.ticker import FuncFormatter
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}"))
+        ax.yaxis.set_minor_formatter(FuncFormatter(lambda v, _: f"{v:g}" if f"{v:g}".lstrip("0.")[:1] in ("2", "5") else ""))
     handles = [Line2D([0], [0], color=FOCUS_COLORS["SOXL"], lw=2, label="SOXL"),
                Line2D([0], [0], color=FOCUS_COLORS["SOXS"], lw=2, label="SOXS"),
                Line2D([0], [0], color=CONTEXT_GRAY, lw=0.9, label="comparison tickers (labelled at right)")]

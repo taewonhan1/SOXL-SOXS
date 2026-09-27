@@ -41,7 +41,7 @@ python scripts/run_battery.py                     # behavior-probe battery (IS 2
 python scripts/run_battery.py --stages 5          # re-draw charts / multiple-testing table only
 
 # 5. tests
-python -m pytest -q tests
+python -m pytest -q -p no:cacheprovider tests
 ```
 
 Authentication is injected by the network proxy in this environment. Elsewhere, add your key in `soxlab/api.py`,

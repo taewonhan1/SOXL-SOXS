@@ -35,7 +35,8 @@ def main() -> None:
     ap.add_argument("--workers", type=int, default=config.MAX_CONCURRENCY)
     args = ap.parse_args()
     if args.update:
-        args.end = (pd.Timestamp.now(tz=config.TZ).normalize() - pd.offsets.BDay(0)).strftime("%Y-%m-%d")
+        today = pd.Timestamp.now(tz=config.TZ).normalize().tz_localize(None)
+        args.end = (today if today.weekday() < 5 else today - pd.offsets.BDay(1)).strftime("%Y-%m-%d")
     t0 = time.time()
     print(f"reference data (splits, dividends) for {args.tickers}")
     sdata.download_reference(args.tickers)

@@ -20,7 +20,12 @@ python3 03_fullday.py                       # full-session quotes + trades, SOXL
 python3 04_bars_analysis.py                 # activity, relative tick, 1-min tick stats, volume profile, RTH gaps   ~3 min
 python3 05_tick_analysis.py                 # everything else incl. cost_model_halfspread.csv                       ~10 min
 python3 05_tick_analysis.py --cost-only     # only regenerate the cost table (fast)
+python3 06_checks.py                        # NBBO size granularity, condition census, gap verification, LULD flags
 ```
+
+Wall-clock times above are for 2 worker threads per process; the download steps are CPU-bound in JSON parsing,
+so several processes with disjoint `--tickers` (or reversed `--days` lists) finish faster than one process with
+many threads. Files are written atomically per ticker-day, so overlapping processes are safe.
 
 `02` and `03` accept `--workers` (default 4 and 2; keep the total at or below about 6 concurrent requests,
 since other analysts share the API) and `--tickers` / `--days` filters.
@@ -31,7 +36,14 @@ since other analysts share the API) and `--tickers` / `--days` filters.
   - 5 in each of 2022, 2023 and 2024, 4 in 2025-01-01..2025-09-25, 13 in 2025-09-26..2026-09-18,
   the last 5 trading days 2026-09-21..25 ("recent"), and 8 stress days chosen from the daily bars
   (largest SOXL / NVDA absolute moves or ranges since 2025-03-25: 2025-04-03, 04-04, 04-07, 04-09, 2026-02-06,
-  2026-06-05, 2026-06-09, 2026-08-27). Stress days are excluded from the cost table and the "normal" groups.
+  2026-06-05, 2026-06-09, 2026-08-27) plus 2025-11-20, added afterwards as the first session after an NVDA
+  quarterly filing (acceptance times in `output/nvda_filing_dates.csv`, from `/vX/reference/financials`; 2026-08-27 is
+  likewise the session after the 2026-08-26 filing). Stress days are excluded from the cost table and the "normal"
+  groups; 2025-11-20 does not enter the normal-day selection, so the normal days are unchanged by its addition.
+* **Analysis groups** (column `group` in the output tables): `y2022`...`y2026` = normal + recent days of that calendar
+  year; `last12m` = normal + recent days from 2025-09-26; `since_2026-07-15` = normal + recent days on/after the
+  last SOXS reverse split (the current price regime: 2026-08-10, 2026-09-04, 2026-09-21..25); `normal18m` = normal +
+  recent days since 2025-03-25 (stress baseline); `stress`; `last5`.
 * **Windows per day** (identical for all tickers on a day): for each of the 13 RTH half-hour buckets, one 10-minute
   NBBO window at a random 5-minute-aligned offset (0-20 min, seeded by the date); trades are taken from the first
   5 minutes of that window so that the mid 1 and 5 minutes later lies inside the quote window. Fixed windows:
@@ -42,6 +54,14 @@ since other analysts share the API) and `--tickers` / `--days` filters.
 * Full-session data (04:00-20:00) for SOXL and SOXS on 2022-09-14, 2023-09-13, 2024-09-12, 2025-08-25 and
   2026-09-21..25 (`03_fullday.py`) are used for exact whole-day statistics and to validate the windows
   (`output/window_validation_fullday.csv`).
+
+## Output charts
+
+`activity_trend.png` (monthly $ volume, trades/day, relative tick), `tick_constraint_scatter.png` (relative tick vs
+share of zero-change 1-minute bars, ticker-months), `volume_profile.png` (1-minute RTH volume shares),
+`spread_by_time_of_day.png`, `depth_by_time_of_day.png`, `spread_to_vol.png` (current regime group),
+`spread_regimes_by_day.png` (SOXL/SOXS per sample day 2022-2026), `stress_vs_normal.png`,
+`fullday_spread_profile.png` (SOXL/SOXS full-session minute-by-minute spread, 2026-09-21..25).
 
 ## Definitions
 

@@ -227,26 +227,32 @@ def walk_forward(trades_by_param: dict, windows: list[tuple], cal_days: pd.Datet
     return pd.DataFrame(rows)
 
 
-def random_entry_baseline(p: Panel, trades: pd.DataFrame, cost_model: CostModel | None, n_iter: int = 200,
+def random_entry_baseline(p: Panel, trades: pd.DataFrame, cost_model: CostModel | None, n_iter: int = 100,
                           seed: int = 0, earliest_entry_bar: int = 1,
-                          flat_before_close: int = config.FLAT_BEFORE_CLOSE_MIN,
-                          random_side: bool = False) -> pd.DataFrame:
-    """Random entries matched to the strategy: same days, same holding time, same side (or random)."""
+                          flat_before_close: int = config.FLAT_BEFORE_CLOSE_MIN) -> pd.DataFrame:
+    """Random-entry null matched to the strategy's trades: same days, same holding times, entry time uniform
+    over the allowed window, side = fair coin. Gross expectation is ~0 (plus/minus drift), net = -costs.
+
+    Pitfalls deliberately avoided (both leak information and inflate the "random" benchmark):
+      * keeping each trade's SIDE while allowing entries before the signal (e.g. entering before an
+        opening-range breakout in the breakout's direction);
+      * keeping the side AND the realized holding time, even with entries after the signal: realized holds
+        encode whether the trade worked (whipsaw losers get short holds), so the null inherits hindsight.
+    """
     rng = np.random.default_rng(seed)
     if trades.empty:
         return pd.DataFrame()
     d = trades["day_idx"].to_numpy()
     hold = np.maximum(1, trades["hold_bars"].to_numpy())
-    side = trades["side"].to_numpy()
     flat_idx = p.n_min[d] - flat_before_close
-    hi = np.maximum(earliest_entry_bar + 1, flat_idx - hold + 1)
+    last_start = np.maximum(earliest_entry_bar, flat_idx - hold)
     fac = _day_factor(p)[d]
     out = []
     for it in range(n_iter):
-        e = rng.integers(earliest_entry_bar, hi)
+        e = rng.integers(earliest_entry_bar, last_start + 1)
         x = np.minimum(e + hold, flat_idx)
         ep, xp = p.o[d, e], p.o[d, x]
-        sd = rng.choice([-1, 1], size=len(d)) if random_side else side
+        sd = rng.choice([-1, 1], size=len(d))
         g = sd * (xp / ep - 1) * 1e4
         tr = pd.DataFrame({"date": trades["date"].to_numpy(), "side": sd, "gross_bps": g,
                            "entry_min_et": config.RTH_START_MIN + e, "exit_min_et": config.RTH_START_MIN + x,

@@ -23,15 +23,16 @@ Everything around the stocks is thinner:
 * **Rate limits**: options, indices and futures calls are capped per minute.
 
 ### Cited Findings
-- **Probe coverage**: 207 probes plus 10 as-of options checks. 165 returned HTTP 200 and 42 returned 403 in the final
-  paced run — [endpoint_inventory.csv](../../analysis/backtests/output/endpoint_inventory.csv) (`scripts/probe_endpoints.py`, `scripts/probe_options_history.py`).
+- **Probe coverage**: 217 rows in total. 207 base probes (165 returned HTTP 200 and 42 returned 403 in the final paced
+  run) plus 10 as-of options history checks (4 returned 200, 6 returned 403) — [endpoint_inventory.csv](../../analysis/backtests/output/endpoint_inventory.csv) (`scripts/probe_endpoints.py`, `scripts/probe_options_history.py`).
 - **Aggregates (`/v2/aggs/ticker/{T}/range/1/{second|minute|hour|day}/…`)** return 200 for SOXL and SOXS, adjusted
   and unadjusted.
   - Earliest bars fall on 2010-03-11: SOXL's first second and minute bars at 09:56:59/09:56 ET, SOXS's at 09:57:13/09:57.
   - Latest minute bar: 2026-09-25 19:59 ET.
   - Earliest daily bar: 2010-03-11 — [endpoint_inventory.csv](../../analysis/backtests/output/endpoint_inventory.csv).
-  - `/v2/aggs/ticker/{T}/prev`, `/v1/open-close/{T}/{date}` (includes `preMarket`/`afterHours` fields) and grouped daily
-    (12,591 US tickers on 2026-09-25) all return 200. `/v1/summaries` returns 403 — [endpoint_inventory.csv](../../analysis/backtests/output/endpoint_inventory.csv).
+  - `/v2/aggs/ticker/{T}/prev`, `/v1/open-close/{T}/{date}` and grouped daily
+    (12,591 US tickers on 2026-09-25) all return 200. For SOXL on 2026-09-25, open-close returned open 149.24,
+    close 151.45, `preMarket` 151.2 and `afterHours` 151.75. `/v1/summaries` returns 403 — [endpoint_inventory.csv](../../analysis/backtests/output/endpoint_inventory.csv).
 - **Ticks**: `/v3/trades` and `/v3/quotes` (NBBO) return 200 for both tickers.
   - Earliest trade: 2010-03-11 09:56:59 (SOXL) and 09:57:13 (SOXS).
   - Earliest NBBO quote: 10:32:26 (SOXL) and 15:05:11 (SOXS) the same day.
@@ -163,7 +164,7 @@ minutes, no duplicates, and a re-fetch matched the cache exactly. There are stil
   — [dq_outliers.csv](../../analysis/backtests/output/dq_outliers.csv); [dq_outlier_examples.csv](../../analysis/backtests/output/dq_outlier_examples.csv).
 - **Split adjustment** (`adjusted=true` is split-only):
   - The unadjusted/adjusted factor changes only on split dates: 0 off-date changes for all 7 tickers with splits
-    (QQQ had none).
+    (`/v3/reference/splits?ticker=QQQ` returned no records).
   - At each split the unadjusted open/prior-close ratio matches the split ratio, e.g. SOXS 2026-07-15 expected 10,
     observed 9.633 (4.28 → 41.23); SOXL 2021-03-02 expected 0.0667, observed 0.0673 (638.4 → 42.94). The adjusted
     ratios look like normal gaps (0.9633, 1.009) — [dq_splits.csv](../../analysis/backtests/output/dq_splits.csv).
@@ -216,12 +217,12 @@ minutes, no duplicates, and a re-fetch matched the cache exactly. There are stil
   [endpoint_inventory.csv](../../analysis/backtests/output/endpoint_inventory.csv) notes; `scripts/probe_endpoints.py`.
 
 ### Inferences
-- Use 2022+ for SOXL/SOXS minute studies: coverage is essentially complete. In 2019–2021, 1.5–11% of SOXL RTH
-  minutes are missing, which biases volatility and fill assumptions if the gaps are ignored.
+- 2022 onward is the window where SOXL/SOXS minute coverage is essentially complete. In 2019–2021, 1.5–11% of SOXL
+  RTH minutes are missing, which biases volatility and fill assumptions if the gaps are ignored.
 - Lead–lag work with SOXX as the driver is contaminated by stale SOXX prints in 2022–2023 (3.6–7.1% missing minutes).
   NVDA and QQQ are cleaner drivers at the minute level.
-- Any "close" signal must choose between the 15:59 bar and the official close. They differ by a median of 7–10 bps,
-  and the closing-cross volume is invisible in minute bars.
+- Signals that reference "the close" depend on whether the 15:59 bar or the official close is meant. The two differ
+  by a median of 7–10 bps, and the closing-cross volume is invisible in minute bars.
 
 ### Gaps
 - Late-reported trades and corrections after the session were not audited beyond the reproducibility re-fetch.
@@ -313,4 +314,328 @@ minutes, no duplicates, and a re-fetch matched the cache exactly. There are stil
   of a year before or after a reverse split, when the cents spread applied to a very different price level.
 - Commission is an assumption. The battery also reports a zero-commission net column (`avg_net_bps_zero_commission`).
 
-<!-- SECTION 4 AND VERDICT APPENDED BELOW -->
+## 4. What does the behavior-probe battery reveal about which intraday behaviors persist out of sample?
+
+### Takeaway
+Only opening-range breakout follow-through produced a positive gross return in both the in-sample and out-of-sample
+periods for both SOXL and SOXS. It is also the only probe with a positive net return in both periods: SOXL
+long/short for all three windows, and the switch mode for the 15-minute window. Even so, the out-of-sample net
+t-statistic is at most 1.19, 2026 year-to-date is negative, and no positive result survives multiple-testing
+adjustment.
+
+The other behaviors split into three groups:
+* **Real but smaller than costs.** 1-min EMA trend persistence earns +2–3 bps gross against 6–8.5 bps round-trip cost on SOXL.
+* **Unstable.** Reversal or momentum after large moves, gap fill and VWAP-trend change sign between periods.
+* **Changed character.** Last-30-minute momentum in 2020–2021 became reversal from 2023 onward.
+
+Minute-level lead–lag from NVDA/SOXX/QQQ to SOXL is about 0.01–0.02 in correlation and cannot be traded at the next
+bar's open.
+
+### Cited Findings
+- **Design.**
+  - The battery runs 16 probes × 3 modes: SOXL long/short, SOXS long/short, and a switch (bullish → long SOXL,
+    bearish → long SOXS), all on its own trade-price minute bars.
+  - Every trade fills at the next bar open. Costs are half-spread per side (cents → bps at the unadjusted price) plus
+    $0.0035/share per side plus SEC/TAF on sells, and positions are flat by 15:55.
+  - Parameters were fixed before any run (`soxlab/strategies.py::PROBES`).
+  - IS 2022-01-03 → 2024-09-30 has 689 sessions; OOS 2024-10-01 → 2026-09-25 has 498 (session counts from `data/soxlab/reference/calendar.parquet`).
+  - Each summary row also carries:
+    - win rate and profit factor (gross and net)
+    - max drawdown of the additive daily P&L, as % of one notional
+    - exposure (share of RTH minutes in a position) and average hold
+  - Example, orb15 SOXL L/S OOS: win rate 43.3%, net profit factor 1.17, max drawdown 90.4% of notional, exposure
+    66.5%, average hold 261 min. For ema_1m SOXL OOS the same fields are 28.0%, 0.88, 354.5%, 85.1% and 20 min.
+  - Source: [battery_summary.csv](../../analysis/backtests/output/battery_summary.csv); [battery_run_info.json](../../analysis/backtests/output/battery_run_info.json) (`scripts/run_battery.py`).
+- **Canonical results** (average bps per trade, all sides). The t-statistic is on daily net P&L:
+
+| probe | mode | IS trades | IS gross | IS net | OOS trades | OOS gross | OOS net | OOS Sharpe net | OOS t (daily) |
+|---|---|---|---|---|---|---|---|---|---|
+| orb5 | SOXL L/S | 688 | +27.9 | +19.4 | 497 | +11.1 | +4.5 | +0.19 | +0.26 |
+| orb5 | SOXS L/S | 688 | +25.8 | +6.5 | 497 | +3.5 | -21.0 | -0.87 | -1.22 |
+| orb5 | switch | 688 | +27.7 | +14.4 | 497 | +7.7 | -6.2 | -0.26 | -0.37 |
+| orb15 | SOXL L/S | 686 | +35.1 | +26.6 | 492 | +30.4 | +24.1 | +0.85 | +1.19 |
+| orb15 | SOXS L/S | 686 | +30.7 | +12.2 | 492 | +20.5 | -3.8 | -0.13 | -0.19 |
+| orb15 | switch | 686 | +33.6 | +19.8 | 492 | +23.4 | +9.1 | +0.34 | +0.47 |
+| orb30 | SOXL L/S | 671 | +26.8 | +18.3 | 476 | +16.9 | +10.8 | +0.40 | +0.56 |
+| orb30 | SOXS L/S | 668 | +30.1 | +12.6 | 474 | +15.4 | -8.7 | -0.31 | -0.43 |
+| orb30 | switch | 671 | +26.0 | +12.8 | 476 | +13.5 | -0.5 | -0.02 | -0.02 |
+| vwap_reversion | SOXL L/S | 2120 | -0.7 | -9.0 | 1352 | -4.3 | -10.8 | -2.09 | -2.94 |
+| vwap_reversion | SOXS L/S | 2151 | -1.6 | -20.6 | 1450 | -0.4 | -25.2 | -4.82 | -6.78 |
+| vwap_reversion | switch | 2147 | -2.1 | -15.5 | 1377 | -3.5 | -17.4 | -3.20 | -4.50 |
+| vwap_trend | SOXL L/S | 8904 | +1.5 | -6.9 | 6649 | -0.9 | -7.3 | -2.91 | -4.09 |
+| vwap_trend | SOXS L/S | 9223 | +1.9 | -16.5 | 7446 | -0.8 | -29.0 | -7.00 | -9.85 |
+| vwap_trend | switch | 8904 | +1.3 | -11.8 | 6649 | -0.9 | -16.4 | -5.54 | -7.79 |
+| mom_1m_z3 | SOXL L/S | 1412 | +2.4 | -5.9 | 1157 | -0.9 | -6.9 | -1.68 | -2.36 |
+| mom_1m_z3 | SOXS L/S | 1340 | +3.0 | -13.3 | 1049 | -0.9 | -21.7 | -4.49 | -6.31 |
+| mom_1m_z3 | switch | 1473 | +2.7 | -11.8 | 1200 | -0.2 | -16.9 | -4.15 | -5.84 |
+| rev_1m_z3 | SOXL L/S | 1412 | -2.4 | -10.6 | 1157 | +0.9 | -5.1 | -1.23 | -1.74 |
+| rev_1m_z3 | SOXS L/S | 1340 | -3.0 | -19.3 | 1049 | +0.9 | -19.9 | -3.98 | -5.60 |
+| rev_1m_z3 | switch | 1473 | -2.0 | -13.1 | 1200 | -0.5 | -14.0 | -4.16 | -5.85 |
+| mom_5m_z3 | SOXL L/S | 544 | -3.2 | -11.2 | 433 | +13.4 | +7.1 | +0.63 | +0.89 |
+| mom_5m_z3 | SOXS L/S | 453 | -4.5 | -18.4 | 329 | +16.3 | +1.4 | +0.10 | +0.14 |
+| mom_5m_z3 | switch | 561 | -1.8 | -17.4 | 447 | +11.3 | -5.0 | -0.47 | -0.66 |
+| rev_5m_z3 | SOXL L/S | 544 | +3.2 | -4.8 | 433 | -13.4 | -19.7 | -1.71 | -2.41 |
+| rev_5m_z3 | SOXS L/S | 453 | +4.5 | -9.4 | 329 | -16.3 | -31.1 | -2.24 | -3.14 |
+| rev_5m_z3 | switch | 561 | +2.5 | -7.6 | 447 | -14.1 | -26.2 | -2.00 | -2.81 |
+| ema_1m | SOXL L/S | 10837 | +2.7 | -5.8 | 8023 | +2.0 | -4.0 | -2.21 | -3.10 |
+| ema_1m | SOXS L/S | 11049 | +2.4 | -15.3 | 8555 | +0.7 | -26.1 | -8.51 | -11.97 |
+| ema_1m | switch | 10837 | +2.5 | -10.4 | 8023 | +1.9 | -13.5 | -6.37 | -8.95 |
+| ema_5m | SOXL L/S | 1764 | +1.8 | -6.6 | 1315 | +2.4 | -3.6 | -0.38 | -0.54 |
+| ema_5m | SOXS L/S | 1779 | +1.5 | -15.6 | 1310 | +4.4 | -20.0 | -1.98 | -2.79 |
+| ema_5m | switch | 1764 | +1.2 | -11.5 | 1315 | +2.4 | -12.8 | -1.31 | -1.85 |
+| last30_day | SOXL L/S | 689 | -3.5 | -11.9 | 497 | -25.7 | -31.2 | -3.74 | -5.26 |
+| last30_day | SOXS L/S | 686 | -2.5 | -20.1 | 498 | -19.1 | -43.6 | -5.23 | -7.35 |
+| last30_day | switch | 689 | -3.9 | -16.3 | 497 | -22.5 | -36.4 | -4.81 | -6.76 |
+| last30_first30 | SOXL L/S | 686 | -3.7 | -12.1 | 495 | -14.6 | -20.2 | -2.38 | -3.34 |
+| last30_first30 | SOXS L/S | 688 | -3.8 | -21.4 | 495 | -8.1 | -32.5 | -3.83 | -5.38 |
+| last30_first30 | switch | 686 | -4.3 | -17.0 | 495 | -11.9 | -25.4 | -3.22 | -4.52 |
+| leadlag_nvda | SOXL L/S | 9930 | +0.5 | -7.9 | 7154 | -0.5 | -6.4 | -12.34 | -17.35 |
+| leadlag_nvda | SOXS L/S | 9930 | +0.6 | -16.6 | 7154 | -0.0 | -24.2 | -14.63 | -20.57 |
+| leadlag_nvda | switch | 9930 | +0.6 | -12.5 | 7154 | -0.2 | -15.4 | -16.30 | -22.91 |
+| leadlag_soxx | SOXL L/S | 10589 | +0.0 | -8.4 | 7095 | -0.1 | -6.1 | -11.76 | -16.53 |
+| leadlag_soxx | SOXS L/S | 10589 | +0.1 | -16.8 | 7095 | +0.6 | -23.3 | -14.83 | -20.85 |
+| leadlag_soxx | switch | 10589 | +0.2 | -13.2 | 7095 | +0.4 | -15.6 | -15.80 | -22.21 |
+| gap_fill | SOXL L/S | 139 | -34.3 | -42.1 | 146 | -10.7 | -16.9 | -0.27 | -0.38 |
+| gap_fill | SOXS L/S | 128 | -54.7 | -72.0 | 108 | +46.2 | +23.2 | +0.31 | +0.44 |
+| gap_fill | switch | 139 | -46.8 | -61.6 | 146 | -24.0 | -45.2 | -0.70 | -0.98 |
+
+  Source: [battery_summary.csv](../../analysis/backtests/output/battery_summary.csv); chart [battery_is_vs_oos.png](../../analysis/backtests/output/battery_is_vs_oos.png); equity curves [battery_equity_curves.png](../../analysis/backtests/output/battery_equity_curves.png).
+- **Yearly breakdown** (gross / net bps per trade; 2019–2021 are pre-sample years never used for selection; 2026 is
+  year-to-date). The half-spread table starts in 2022, so net values for 2019–2021 use the nearest-year (2022) cents
+  spread at those years' prices:
+
+| probe | mode | 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
+|---|---|---|---|---|---|---|---|---|---|
+| orb5 | SOXL L/S | +12.4 / +11.2 | -0.5 / -1.4 | +14.9 / +11.5 | +37.0 / +26.6 | +20.2 / +10.7 | +29.9 / +25.1 | +14.0 / +6.5 | -3.5 / -9.3 |
+| orb5 | SOXS L/S | +10.5 / -17.6 | +0.5 / -30.3 | +14.6 / -30.8 | +31.8 / +8.1 | +23.3 / +9.2 | +25.2 / +8.1 | +9.2 / -14.6 | -16.1 / -47.2 |
+| orb15 | SOXL L/S | +2.2 / +1.0 | -4.1 / -5.0 | +44.7 / +41.3 | +51.6 / +41.2 | +22.1 / +12.6 | +32.1 / +27.3 | +61.2 / +53.8 | -13.1 / -18.1 |
+| orb15 | SOXS L/S | +3.8 / -22.5 | -4.4 / -33.2 | +44.5 / +2.6 | +48.7 / +26.9 | +15.1 / +1.1 | +30.6 / +13.6 | +49.2 / +25.8 | -24.5 / -55.5 |
+| orb30 | SOXL L/S | +2.4 / +1.1 | -12.4 / -13.3 | +22.3 / +18.8 | +48.4 / +38.1 | +9.0 / -0.5 | +25.7 / +20.9 | +44.3 / +36.9 | -29.2 / -33.4 |
+| orb30 | SOXS L/S | +3.2 / -20.6 | -4.7 / -30.0 | +19.9 / -17.7 | +53.7 / +34.5 | +13.3 / -0.7 | +25.6 / +8.5 | +46.9 / +23.5 | -36.8 / -67.3 |
+| vwap_reversion | SOXL L/S | -2.6 / -3.8 | -1.1 / -2.1 | -3.5 / -6.9 | -1.7 / -11.7 | +1.1 / -8.4 | +0.5 / -4.2 | -5.1 / -12.7 | -7.4 / -12.6 |
+| vwap_reversion | SOXS L/S | +0.2 / -23.7 | -2.0 / -29.4 | -5.9 / -44.6 | -2.2 / -24.6 | +1.4 / -12.7 | -3.6 / -22.2 | -1.8 / -26.0 | +1.3 / -29.1 |
+| vwap_trend | SOXL L/S | -0.6 / -1.8 | +6.2 / +5.4 | +4.6 / +1.1 | +4.9 / -5.5 | -0.5 / -9.9 | +0.0 / -4.8 | -0.6 / -8.2 | -1.6 / -6.3 |
+| vwap_trend | SOXS L/S | +0.1 / -25.1 | +6.2 / -19.6 | +4.5 / -34.5 | +6.0 / -13.5 | -0.9 / -15.7 | +0.0 / -18.5 | -0.3 / -27.4 | -1.0 / -38.1 |
+| mom_1m_z3 | SOXL L/S | +1.7 / +0.5 | +3.2 / +2.3 | -1.5 / -4.7 | -0.2 / -10.5 | -0.6 / -10.2 | +6.9 / +2.2 | -1.2 / -8.8 | -1.1 / -5.1 |
+| mom_1m_z3 | SOXS L/S | +2.2 / -16.9 | +5.8 / -17.3 | -1.3 / -35.0 | +4.1 / -14.2 | -0.9 / -14.7 | +5.0 / -9.6 | -3.9 / -25.5 | +2.0 / -21.4 |
+| rev_1m_z3 | SOXL L/S | -1.7 / -2.9 | -3.2 / -4.1 | +1.5 / -1.8 | +0.2 / -10.2 | +0.6 / -8.9 | -6.9 / -11.6 | +1.2 / -6.4 | +1.1 / -2.9 |
+| rev_1m_z3 | SOXS L/S | -2.2 / -21.2 | -5.8 / -29.0 | +1.3 / -32.3 | -4.1 / -22.4 | +0.9 / -12.9 | -5.0 / -19.5 | +3.9 / -17.6 | -2.0 / -25.5 |
+| mom_5m_z3 | SOXL L/S | +2.2 / +1.0 | +5.5 / +4.6 | -1.5 / -5.0 | -2.7 / -12.6 | -10.6 / -20.0 | +8.2 / +3.4 | +16.3 / +8.6 | +5.1 / +1.1 |
+| mom_5m_z3 | SOXS L/S | +6.8 / -10.7 | +10.7 / -10.8 | +1.2 / -32.1 | +0.9 / -13.2 | -16.7 / -30.0 | +7.0 / -5.5 | +19.6 / +1.8 | +11.1 / -2.1 |
+| rev_5m_z3 | SOXL L/S | -2.2 / -3.3 | -5.5 / -6.5 | +1.5 / -2.1 | +2.7 / -7.1 | +10.6 / +1.2 | -8.2 / -13.0 | -16.3 / -24.1 | -5.1 / -9.1 |
+| rev_5m_z3 | SOXS L/S | -6.8 / -24.2 | -10.7 / -32.2 | -1.2 / -34.5 | -0.9 / -15.0 | +16.7 / +3.3 | -7.0 / -19.5 | -19.6 / -37.4 | -11.1 / -24.3 |
+| ema_1m | SOXL L/S | -1.2 / -2.4 | +3.0 / +2.1 | -0.3 / -3.8 | +4.0 / -6.7 | +0.4 / -8.9 | +2.9 / -1.9 | +3.0 / -4.4 | +1.7 / -2.5 |
+| ema_1m | SOXS L/S | -0.6 / -23.1 | +2.4 / -22.6 | +0.1 / -36.3 | +3.4 / -14.7 | +0.7 / -13.6 | +1.8 / -16.3 | +1.8 / -23.1 | +0.4 / -35.4 |
+| ema_5m | SOXL L/S | -6.3 / -7.5 | +10.8 / +10.0 | +11.5 / +8.0 | -2.8 / -13.3 | +10.9 / +1.6 | -1.0 / -5.8 | +3.5 / -4.1 | +0.3 / -3.6 |
+| ema_5m | SOXS L/S | -3.7 / -27.0 | +7.4 / -17.2 | +11.7 / -24.1 | -4.3 / -21.5 | +11.6 / -2.8 | -2.0 / -19.5 | +8.6 / -14.9 | -0.0 / -31.2 |
+| last30_day | SOXL L/S | -2.9 / -4.1 | +30.6 / +29.7 | +15.7 / +12.3 | +4.0 / -6.4 | -11.7 / -21.1 | -9.8 / -14.6 | -29.8 / -37.2 | -18.2 / -21.3 |
+| last30_day | SOXS L/S | -3.4 / -27.3 | +31.9 / +6.2 | +17.7 / -20.4 | +4.0 / -15.3 | -11.0 / -25.0 | -7.5 / -24.4 | -22.8 / -46.6 | -10.6 / -41.6 |
+| last30_first30 | SOXL L/S | -1.5 / -2.7 | +17.5 / +16.6 | +3.5 / +0.0 | -7.7 / -18.1 | -5.3 / -14.7 | -3.0 / -7.8 | -21.0 / -28.4 | -3.0 / -6.1 |
+| last30_first30 | SOXS L/S | -2.1 / -25.8 | +21.6 / -4.0 | +5.0 / -33.2 | -9.3 / -28.7 | -5.2 / -19.3 | +0.4 / -16.7 | -11.7 / -35.5 | -0.9 / -31.7 |
+| leadlag_nvda | SOXL L/S | +1.2 / -0.0 | +2.6 / +1.6 | +0.3 / -3.2 | +1.9 / -8.3 | -0.6 / -10.0 | +0.0 / -4.8 | -0.9 / -8.3 | -0.0 / -4.0 |
+| leadlag_nvda | SOXS L/S | +1.2 / -20.4 | +2.6 / -21.1 | +0.8 / -34.4 | +1.8 / -16.2 | -0.6 / -14.7 | +0.4 / -16.9 | -0.3 / -24.0 | +0.6 / -29.6 |
+| leadlag_soxx | SOXL L/S | +0.7 / -0.4 | +1.4 / +0.5 | +0.7 / -2.8 | +0.9 / -9.3 | -0.9 / -10.3 | -0.0 / -4.8 | -0.4 / -7.9 | +0.4 / -3.6 |
+| leadlag_soxx | SOXS L/S | +0.8 / -20.5 | +1.5 / -22.3 | +1.3 / -33.3 | +1.0 / -16.4 | -0.9 / -15.1 | +0.0 / -17.0 | +0.4 / -22.8 | +1.3 / -29.3 |
+| gap_fill | SOXL L/S | +17.6 / +16.4 | -39.5 / -40.4 | -53.8 / -56.5 | -116.0 / -126.8 | -16.5 / -25.5 | -6.5 / -11.2 | -21.4 / -28.6 | +6.0 / +0.6 |
+| gap_fill | SOXS L/S | +24.7 / -8.4 | -20.5 / -38.5 | -75.6 / -122.1 | -194.3 / -212.5 | +45.2 / +31.1 | +8.1 / -8.6 | +66.4 / +44.4 | +42.6 / +14.3 |
+
+  Source: [battery_yearly.csv](../../analysis/backtests/output/battery_yearly.csv).
+- **Breakout follow-through (ORB 5/15/30).**
+  - **Gross.** All 12 ticker × window × period cells are positive. IS: SOXL +27.9/+35.1/+26.8, SOXS +25.8/+30.7/+30.1.
+    OOS: SOXL +11.1/+30.4/+16.9, SOXS +3.5/+20.5/+15.4 bps.
+  - **Noise.** The per-trade gross standard error is 15–20 bps; daily gross t-statistics are 1.72–2.28 IS and 0.20–1.50 OOS.
+  - **Both sides contribute on SOXL** (orb15 gross by side): IS long +55.7 / short +16.2; OOS long +40.8 / short +18.3 —
+    [battery_summary.csv](../../analysis/backtests/output/battery_summary.csv) (side rows).
+  - **Net OOS.** SOXL +4.5/+24.1/+10.8, SOXS −21.0/−3.8/−8.7, switch (orb15) +9.1.
+  - **Against the random-side null** (same days and holding times, random entry time and direction, 100 draws), orb15
+    ranks at the 98th (IS) and 97th (OOS) percentile for SOXL and the 100th/86th for SOXS. orb5 and orb30 rank at the
+    76th/78th percentile OOS for SOXL — [battery_random_baseline.csv](../../analysis/backtests/output/battery_random_baseline.csv).
+  - **Walk-forward.** Rolling 24-month train / 6-month test, 10 windows, 2022-01 → 2026-09: orb15 SOXL stitched net
+    +20.9 bps/trade (Sharpe 0.88, t 1.91); SOXS +2.6.
+  - **In-sample selection.** Choosing between "no target" and "2R target" on IS picked the 2R target, which delivered
+    OOS net +12.3 bps (SOXL), below the canonical +24.1 — [battery_walkforward.csv](../../analysis/backtests/output/battery_walkforward.csv); [battery_is_selected_oos.csv](../../analysis/backtests/output/battery_is_selected_oos.csv).
+  - **Timing.** One extra bar of delay lowers orb15 SOXL gross from 33.2 to 25.2 bps (2022–2026) — [battery_timing_diagnostics.csv](../../analysis/backtests/output/battery_timing_diagnostics.csv).
+  - **By year** (orb15 SOXL gross): 2019 +2.2, 2020 −4.1, 2021 +44.7, 2022 +51.6, 2023 +22.1, 2024 +32.1, 2025 +61.2,
+    2026 year-to-date −13.1.
+- **Mean reversion.**
+  - **VWAP ±2σ reversion** (exit at VWAP, stop at 3σ, ≤60 min): gross IS −0.7 (SOXL) / −1.6 (SOXS), OOS −4.3 / −0.4
+    bps. It sits at the 14th–48th percentile of the random null, and net is −9 to −25.
+  - **Reversal after a >3σ 1-min move** (hold 5 min): gross IS −2.35 / −2.97, then OOS +0.90 / +0.89. The sign flips.
+  - **Reversal after a >3σ 5-min move** (hold 15): IS +3.2 / +4.5, then OOS −13.4 / −16.3 (1st–2nd percentile of the
+    null OOS). The sign flips.
+  - **Gap fill** (abs(gap) > 0.5 ATR, 108–146 trades per period): SOXL gross IS −34.3, OOS −10.7; SOXS −54.7, then
+    +46.3. The per-trade SE is 44–53 bps. In 2022, fading gaps lost −116 (SOXL) and −194 (SOXS) bps gross per trade.
+  - Source: [battery_summary.csv](../../analysis/backtests/output/battery_summary.csv); [battery_random_baseline.csv](../../analysis/backtests/output/battery_random_baseline.csv); [battery_yearly.csv](../../analysis/backtests/output/battery_yearly.csv).
+- **Momentum / trend.**
+  - **EMA(9/21) 1-min crossover.** Gross IS +2.73 (SOXL, t 2.75) / +2.40 (SOXS, t 2.50); OOS +1.99 (t 1.60) / +0.75
+    (t 0.59), over roughly 8,000–11,000 trades per period. It ranks at the 99th/97th percentile of the random null
+    (SOXL IS/OOS) and is positive in 6 of 8 calendar years for SOXL.
+    - Average round-trip cost is 8.5 (IS) and 6.0 (OOS) bps for SOXL, so net is −5.8 / −4.0.
+    - With zero commission, OOS net is still −1.9 (SOXL) and −15.2 (SOXS).
+  - **EMA 5-min**: gross +1.8 / +2.4 (SOXL) with SE 4.5–6.3 bps, indistinguishable from zero.
+  - **VWAP trend-follow**: gross +1.5 IS, −0.9 OOS (SOXL).
+  - **Momentum after a >3σ 1-min move**: +2.35 IS, −0.90 OOS.
+  - **Momentum after a >3σ 5-min move**: −3.2 IS, +13.4 OOS (t 1.66). The sign flips.
+  - **Last-30-minute momentum** (sign of the prior close → 15:30 return; trade 15:30 → 15:55 open):
+    - SOXL gross −3.5 IS (t −0.75) and −25.7 OOS (t −4.34); SOXS −2.5 and −19.1 (t −3.32). This is reversal, not momentum.
+    - SOXL by year: +30.6 (2020), +15.7 (2021), +4.0 (2022), −11.7 (2023), −9.8 (2024), −29.8 (2025), −18.2 (2026).
+    - The first-30-minute signal variant shows the same pattern (SOXL IS −3.7, OOS −14.6).
+    - A re-computation outside the harness reproduced these gross values (−3.49 / −25.61).
+    - Source: [battery_summary.csv](../../analysis/backtests/output/battery_summary.csv); [battery_yearly.csv](../../analysis/backtests/output/battery_yearly.csv).
+- **Lead–lag** (driver move → SOXL next minute).
+  - **Contemporaneous 1-min correlation of SOXL** with NVDA / SOXX / QQQ is 0.83 / 0.91 / 0.88 IS and 0.69 / 0.98 /
+    0.85 OOS.
+  - **Driver leading by one minute**: 0.023 / 0.019 / 0.022 IS and 0.012 / 0.014 / 0.011 OOS.
+  - **SOXX lagging SOXL by one minute**: 0.087 IS and 0.026 OOS. SOXX follows SOXL, consistent with SOXX's missing
+    minutes.
+  - Source: [leadlag_xcorr.csv](../../analysis/backtests/output/leadlag_xcorr.csv); [leadlag_xcorr.png](../../analysis/backtests/output/leadlag_xcorr.png).
+  - **The probe** (driver >2σ 1-min move → trade the ETF at the next open, hold 1 min):
+    - NVDA→SOXL gross +0.48 IS (t 1.89) and −0.48 OOS; SOXX→SOXL 0.00 / −0.08.
+    - Net is −6 to −8 (SOXL) and −16 to −24 (SOXS).
+    - The same signal filled at the signal bar's own open, which is look-ahead and not tradable, would earn +38.7
+      (NVDA) and +44.1 (SOXX) bps gross — [battery_timing_diagnostics.csv](../../analysis/backtests/output/battery_timing_diagnostics.csv).
+- **Harness sanity on real data** (2022–2026, gross bps). The look-ahead fill (lag −1) inflates every
+  short-horizon signal; for example, momentum after a 1-min move goes from +0.9 to +69.3 and EMA 1-min from +2.4 to
+  +36.0. Day-shuffled signals give −2.4 to +5.6 bps for every probe except ORB and gap fill, whose per-trade noise
+  is ±15–53 bps — [battery_timing_diagnostics.csv](../../analysis/backtests/output/battery_timing_diagnostics.csv).
+- **Multiple testing** (48 canonical tests per period, daily t → normal p, Benjamini–Hochberg):
+  - OOS: 7 of 48 have positive net. The best is orb15 SOXL L/S (t 1.19, p 0.23, BH q 0.33). None has q < 0.30.
+    30 are significantly *negative* (q < 0.05), driven by costs.
+  - IS: 9 positive net, all ORB; the best is orb15 SOXL (t 1.73, q 0.12).
+  - Source: [battery_multiple_testing.csv](../../analysis/backtests/output/battery_multiple_testing.csv).
+
+### Inferences
+- Two probes rank at or above the 97th percentile of the random-side null in both periods for SOXL: orb15 (98th/97th)
+  and ema_1m (99th/97th, gross). Neither is established beyond noise after multiple-testing adjustment.
+- The EMA effect is persistent but sub-cost: the harness finds a gross edge of +2–3 bps per trade, against a 4–10 bps
+  round-trip cost floor for SOXL.
+- SOXS results are systematically worse net, even where gross is similar, because its low unadjusted price makes 1¢
+  spreads and per-share commissions expensive in bps. The same signal is cheaper to express through SOXL (long/short
+  or switch).
+- The last-30-minute result is the clearest behavior *change*: 2020–2021 momentum, 2023–2026 reversal. The evidence
+  fits a regime-dependent effect better than a stable anomaly in either direction.
+- Minute bars cannot see lead–lag between these tickers: the information shows up within the same minute.
+  Sub-minute (second bars or trades) data would be needed to test it properly, and the account has that data.
+
+### Gaps
+- Stops are checked on bar high/low, which exclude odd lots. The timing of intra-bar stop/target touches is unknown.
+- ORB's SOXL result coincides with a strongly rising SOXL price. Unadjusted SOXL went from $30.81 to $300.77 in the
+  12 months to 2026-09-25 per the microstructure price table
+  ([price_levels.csv](../../analysis/microstructure/output/price_levels.csv)). Separating breakout follow-through from
+  drift needs a longer or more varied sample.
+- No regime conditioning was tried: volatility buckets, events, or gap size × ORB. Conditioning adds tests and so
+  multiple-testing burden.
+
+## 5. What are the limitations of these minute-bar backtests?
+
+### Takeaway
+The harness is deliberately conservative about timing: next-bar-open fills, stop-first, and flat before the close.
+It still approximates execution with trade-price bars and sampled spreads. It has no queue, fill-probability,
+partial-fill or impact model. The battery ran 96 canonical tests plus grids, so any single positive result must be
+read against the multiple-testing tables.
+
+### Cited Findings
+- **Fill assumptions.**
+  - Entries and exits fill at the next bar's open, meaning the first eligible trade of that minute, plus a modelled
+    half-spread per side.
+  - Stops fill at the stop level, or at a worse gapped open. Targets fill at the level, or at a better gapped open.
+  - If a bar touches both, the stop is assumed first.
+  - Source: `soxlab/backtest.py`; tests `test_stop_first_when_both_touched`, `test_stop_gap_through_fills_at_open`.
+- **Trade-price bars, not quotes.**
+  - Bar OHLC excludes odd lots (77% of prints in the SOXL 10:15 sample minute) and the closing cross. Extended-hours
+    bars are Form-T prints.
+  - A bar open may therefore sit at the bid or the ask, and the half-spread adjustment is an average, not
+    trade-specific — [dq_bar_rebuild.csv](../../analysis/backtests/output/dq_bar_rebuild.csv); [data_quality_report.md](../../analysis/backtests/output/data_quality_report.md).
+- **No queue modelling, no partial fills, no market impact.** The trade notional is fixed at $25,000 (ASSUMPTION). No
+  borrow or locate cost is charged for intraday shorts. LULD halts are not modelled beyond missing bars —
+  `soxlab/config.py`; `soxlab/costs.py`.
+- **Spread-sample risk.**
+  - The half-spread table comes from 2 sample days per ticker-year, in 30-minute buckets.
+  - Around SOXS reverse splits, the price level within a year differs by up to 20×. A per-year cents figure can then
+    misstate bps costs.
+  - A separate 10-day NBBO sample reproduced the same median cents (1¢ for SOXL 2022–2025) —
+    [halfspread_estimate_nbbo_sample.csv](../../analysis/backtests/output/halfspread_estimate_nbbo_sample.csv).
+- **Multiple testing and selection.**
+  - 16 probes × 3 modes × 2 periods = 96 canonical rows, plus grids of 1–8 variants per probe and 10 walk-forward
+    windows. BH/Bonferroni adjustments are in [battery_multiple_testing.csv](../../analysis/backtests/output/battery_multiple_testing.csv).
+  - In-sample selection did not beat the canonical parameters OOS for ORB (orb15 SOXL +12.3 vs +24.1 net) —
+    [battery_is_selected_oos.csv](../../analysis/backtests/output/battery_is_selected_oos.csv).
+- **Null design matters.** A first version of the random-entry baseline kept each trade's side and realized holding
+  time. It produced impossible "random" returns (+68 to +170 bps gross for ORB across the two flawed variants)
+  because the side and hold encode the signal's outcome. The published null uses random sides — `soxlab/backtest.py::random_entry_baseline` docstring.
+- **Sample and regime.**
+  - Only about 2.7 years IS and 2 years OOS.
+  - SOXL's price path in the OOS was extreme: $30.81 → $300.77 unadjusted within 12 months.
+  - 2019–2021 minute data has 1.5–11% missing SOXL minutes, so pre-2022 years are informative only as a
+    robustness check — [dq_coverage.csv](../../analysis/backtests/output/dq_coverage.csv).
+- **Index proxy.** Intraday leverage and tracking features use SOXX as the index. SOXX had 3.6–7.1% missing RTH minutes
+  in 2022–2023 and lags SOXL by about a minute (corr 0.087 at k = −1, IS) — [dq_coverage.csv](../../analysis/backtests/output/dq_coverage.csv); [leadlag_xcorr.csv](../../analysis/backtests/output/leadlag_xcorr.csv).
+
+### Inferences
+- Positive-looking minute-bar results of the size seen here (tens of bps per trade with SE ~15–20 bps) need either
+  much longer samples or tick-level fill simulation before they can be distinguished from noise and drift.
+- For the short-horizon probes (1–5 minute holds), the harness's cost floor exceeds every gross effect found.
+  Conclusions about them are therefore more sensitive to fill and cost modelling (for example, passive limit fills)
+  than to signal parameters.
+
+### Gaps
+- There is no trade-level (quote-conditioned) execution simulation. The `/v3/quotes` data needed for one exists on
+  this account, but was only sampled for spreads.
+- The effect of the 15:55 flat rule, which excludes the closing auction and last 5 minutes, was not compared with a
+  hold-to-close variant.
+
+## Data and backtest verdict: is there enough to track and backtest?
+
+### Takeaway
+Yes, for SOXL/SOXS intraday tracking and minute-level backtesting. The account provides:
+* second-, minute- and day-level bars and full tick/NBBO history from the 2010 listing, current to 2026-09-25
+* real-time snapshots
+* splits, calendar signals and short data
+
+Since 2022 the data is clean: about 0% missing RTH minutes, no duplicates, a re-fetch reproduced the cache exactly,
+and split factors change only on split dates. `soxlab` turns this into a reproducible, look-ahead-tested pipeline
+with a realistic cost model and a daily tracker.
+
+There is not enough for:
+* options-, futures- or index-driven studies before about 2024-09 (2023-02 for I:SOX)
+* an intraday fair value: no iNAV and no ICE index
+* holdings or flow data
+
+The first battery found one behavior with consistent positive gross follow-through (opening-range breakouts). It is
+not statistically established after adjustment and was negative in 2026 year-to-date. The rest are sub-cost, unstable
+or regime-dependent.
+
+### Cited Findings
+- **Stock entitlement is complete.** 200s on aggregates (second→day), trades, NBBO quotes, snapshots (`REAL-TIME`),
+  indicators and reference data. Earliest records are 2010-03-11 for both tickers — [endpoint_inventory.csv](../../analysis/backtests/output/endpoint_inventory.csv).
+- **Data quality 2022+**: 0.000–0.025% missing RTH minutes (SOXL/SOXS), 0 duplicates, 0 mismatches on re-fetch, 0
+  off-date split-factor changes — [dq_coverage.csv](../../analysis/backtests/output/dq_coverage.csv); [dq_raw_duplicate_sample.csv](../../analysis/backtests/output/dq_raw_duplicate_sample.csv); [dq_splits.csv](../../analysis/backtests/output/dq_splits.csv).
+- **Limited families.**
+  - Options aggregates reach back about 2 years (403 before about 2024-09/10). Options trades, quotes and greeks return 403.
+  - Futures aggregates start about 2024-09-28. Indices (I:SOX/I:NDX) start 2023-02-15.
+  - ETF Global and Benzinga return 403.
+  - Source: [endpoint_inventory.csv](../../analysis/backtests/output/endpoint_inventory.csv).
+- **Toolkit.**
+  - 32 passing tests, including feature truncation invariance on real data.
+  - End-to-end runs: download 300 s; quality report ~100–115 s; tracker 44 s; battery stages 133 s (1–2) + 493 s (3,
+    100 draws) + ~60 s (4) + 22 s (5).
+  - Source: `tests/`; `data/soxlab/*.log`.
+- **Battery**: best OOS net is orb15 SOXL L/S +24.1 bps/trade (t 1.19, BH q 0.33). The 1-min EMA gross edge of +2.0
+  (OOS) is below the 6.0 bps average cost. Last-30-minute behavior flipped from momentum (2020–21) to reversal
+  (2023–26) — [battery_summary.csv](../../analysis/backtests/output/battery_summary.csv); [battery_multiple_testing.csv](../../analysis/backtests/output/battery_multiple_testing.csv); [battery_yearly.csv](../../analysis/backtests/output/battery_yearly.csv).
+
+### Inferences
+- **Tracking.** The data and tracker support daily and live monitoring of SOXL/SOXS without further purchases. Live
+  work would run on REST polling today, or on WebSockets with a raw key. The missing pieces are an iNAV/ICE-index feed
+  for premium/discount and holdings/flows.
+- **Backtesting.**
+  - Minute-level hypotheses: sufficient.
+  - Sub-minute execution and lead–lag questions: the data exists (trades/quotes/second bars), but the harness would
+    need a tick-level fill model.
+  - Anything options- or futures-driven: insufficient history on this plan.
+
+### Gaps
+- Real-time latency during market hours, WebSocket behavior and flat-file access were not verified in this session.
+- The behavior evidence covers 2022–2026 with one IS/OOS split. Longer out-of-sample accumulation, which the tracker
+  and `--update` support, is the main missing ingredient for firmer conclusions.
+

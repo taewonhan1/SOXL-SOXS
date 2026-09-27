@@ -18,7 +18,7 @@ Outputs (analysis/backtests/output/)
   battery_yearly.csv             probe x mode x year (side = all)
   battery_is_selected_oos.csv    grid member selected on IS net Sharpe and its OOS result
   battery_walkforward.csv        rolling 24m-train / 6m-test walk-forward (stitched test results)
-  battery_random_baseline.csv    random-entry baseline (matched day, holding time, side) percentiles
+  battery_random_baseline.csv    random-entry null (same days and holding times, random time and side)
   battery_timing_diagnostics.csv lag -1 (look-ahead, NOT tradable) / 0 / +1 bar and day-shuffled signals
   battery_multiple_testing.csv   OOS daily t-stats, p-values, Benjamini-Hochberg q-values
   leadlag_xcorr.csv              1-min cross-correlations ETF vs drivers at lags -3..+3
@@ -165,10 +165,11 @@ def charts(summary: pd.DataFrame, curves: dict, xc: pd.DataFrame) -> None:
         ax.set_yticks(y)
         ax.set_yticklabels(probes)
         ax.grid(axis="y", visible=False)
-    axes[0].legend(frameon=False, loc="lower left", fontsize=8)
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, frameon=False, loc="upper right", ncol=2, fontsize=8)
     fig.suptitle("Behavior probes: average net bps per trade, in-sample vs out-of-sample (canonical parameters)",
                  x=0.01, ha="left", color=INK, fontsize=11)
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
     fig.savefig(OUT / "battery_is_vs_oos.png", dpi=110)
     plt.close(fig)
     # 2. equity curves small multiples
@@ -195,21 +196,23 @@ def charts(summary: pd.DataFrame, curves: dict, xc: pd.DataFrame) -> None:
     fig.tight_layout()
     fig.savefig(OUT / "battery_equity_curves.png", dpi=100)
     plt.close(fig)
-    # 3. lead-lag cross-correlation
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4), sharey=True)
+    # 3. lead-lag cross-correlation at NON-zero lags (lag-0 value reported in the legend label)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2), sharey=True)
     for ax, per in zip(axes, ("IS", "OOS")):
         s = xc[(xc["period"] == per) & (xc["etf"] == "SOXL")]
         for D, col in (("NVDA", S1), ("SOXX", S2), ("QQQ", S3)):
             d = s[s["driver"] == D].sort_values("lag_driver_leads_min")
-            ax.plot(d["lag_driver_leads_min"], d["corr"], color=col, lw=2, marker="o", ms=5, label=D)
-            last = d[d["lag_driver_leads_min"] == 1]
-            ax.annotate(f"{D} lag+1: {last['corr'].iloc[0]:.3f}", (1, last["corr"].iloc[0]), xytext=(8, 0),
-                        textcoords="offset points", color=INK2, fontsize=7, va="center")
+            c0 = d.loc[d["lag_driver_leads_min"] == 0, "corr"].iloc[0]
+            for side in (d[d["lag_driver_leads_min"] < 0], d[d["lag_driver_leads_min"] > 0]):
+                ax.plot(side["lag_driver_leads_min"], side["corr"], color=col, lw=2, marker="o", ms=5,
+                        label=f"{D} (lag 0: {c0:.2f})" if side["lag_driver_leads_min"].iloc[0] > 0 else None)
         ax.axhline(0, color=AXIS, lw=0.8)
-        ax.set_title(f"SOXL 1-min return vs driver return k minutes earlier ({per})", color=INK, fontsize=9, loc="left")
-        ax.set_xlabel("k (driver leads by k minutes; k < 0 = driver lags)")
-    axes[0].set_ylabel("correlation")
-    axes[0].legend(frameon=False, fontsize=8)
+        ax.axvline(0, color=GRID, lw=0.8)
+        ax.set_xticks([-3, -2, -1, 1, 2, 3])
+        ax.set_title(f"{per}: corr(SOXL 1-min return at t, driver return at t-k)", color=INK, fontsize=9, loc="left")
+        ax.set_xlabel("k in minutes (k > 0: driver leads SOXL; k < 0: driver lags SOXL)")
+        ax.legend(frameon=False, fontsize=8, loc="upper right")
+    axes[0].set_ylabel("correlation (lag 0 omitted)")
     fig.tight_layout()
     fig.savefig(OUT / "leadlag_xcorr.png", dpi=110)
     plt.close(fig)
@@ -325,16 +328,22 @@ def stage_random(ctx, cm, canon_trades, n_iter, t0):
             t = tr[(tr["date"] >= pd.Timestamp(a)) & (tr["date"] <= pd.Timestamp(b))]
             if len(t) < 10:
                 continue
-            seed = int(hashlib.md5(f"{probe}|{mode}|{per}".encode()).hexdigest()[:8], 16)
-            rb = bt.random_entry_baseline(p, t, cm, n_iter=n_iter, seed=seed, earliest_entry_bar=ss.rules.earliest_entry_bar)
-            strat = t["net_bps"].mean()
-            rb_rows.append({"probe": probe, "mode": mode, "period": per, "n_trades": len(t), "n_iter": n_iter,
-                            "strategy_avg_net_bps": strat, "strategy_avg_gross_bps": t["gross_bps"].mean(),
-                            "random_avg_net_bps_mean": rb["avg_net_bps"].mean(),
-                            "random_avg_net_bps_p05": rb["avg_net_bps"].quantile(0.05),
-                            "random_avg_net_bps_p95": rb["avg_net_bps"].quantile(0.95),
-                            "random_avg_gross_bps_mean": rb["avg_gross_bps"].mean(),
-                            "strategy_percentile_vs_random": float((rb["avg_net_bps"] < strat).mean() * 100)})
+            row = {"probe": probe, "mode": mode, "period": per, "n_trades": len(t), "n_iter": n_iter,
+                   "strategy_avg_gross_bps": t["gross_bps"].mean(), "strategy_avg_net_bps": t["net_bps"].mean(),
+                   "strategy_gross_se_bps": t["gross_bps"].std(ddof=1) / np.sqrt(len(t))}
+            for rmode in ("random_side",):
+                seed = int(hashlib.md5(f"{probe}|{mode}|{per}|{rmode}".encode()).hexdigest()[:8], 16)
+                rb = bt.random_entry_baseline(p, t, cm, n_iter=n_iter, seed=seed,
+                                              earliest_entry_bar=ss.rules.earliest_entry_bar)
+                row.update({f"{rmode}_gross_mean": rb["avg_gross_bps"].mean(),
+                            f"{rmode}_gross_p05": rb["avg_gross_bps"].quantile(0.05),
+                            f"{rmode}_gross_p95": rb["avg_gross_bps"].quantile(0.95),
+                            f"{rmode}_net_mean": rb["avg_net_bps"].mean(),
+                            f"{rmode}_net_p05": rb["avg_net_bps"].quantile(0.05),
+                            f"{rmode}_net_p95": rb["avg_net_bps"].quantile(0.95),
+                            f"{rmode}_strategy_net_percentile": float((rb["avg_net_bps"] < row["strategy_avg_net_bps"]).mean() * 100),
+                            f"{rmode}_strategy_gross_percentile": float((rb["avg_gross_bps"] < row["strategy_avg_gross_bps"]).mean() * 100)})
+            rb_rows.append(row)
         print(f"  random {probe:16s} {mode} done ({time.time() - t0:.0f}s)", flush=True)
     pd.DataFrame(rb_rows).to_csv(OUT / "battery_random_baseline.csv", index=False, float_format="%.4f")
 
@@ -406,7 +415,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--stages", default="1,2,3,4,5",
                     help="1 canonical, 2 grid/walk-forward, 3 random baseline, 4 timing diagnostics, 5 tests/xcorr/charts")
-    ap.add_argument("--n-random", type=int, default=200)
+    ap.add_argument("--n-random", type=int, default=100)
     args = ap.parse_args()
     stages = {int(x) for x in args.stages.split(",")}
     t0 = time.time()

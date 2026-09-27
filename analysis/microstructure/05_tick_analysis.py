@@ -740,11 +740,14 @@ def charts(sp, s2v, ds):
     ax.set_title("Displayed NBBO depth by time of day, sampled windows on the 7 normal days since 2026-07-15", fontsize=10)
     fig.subplots_adjust(right=0.9, top=0.92, bottom=0.08, left=0.09)
     fig.savefig(OUT / "depth_by_time_of_day.png", dpi=110); plt.close(fig)
-    # 3) spread-to-vol by time of day
+    # 3) spread-to-vol by time of day. Numerator: time-weighted quoted spread (sampled windows, current-regime days);
+    #    denominator: sd of 1-min / 5-min trade-price returns from 1-min bars over ALL sessions since 2026-07-15
+    #    (the mid-quote version from the 7 sampled days is in spread_to_vol.csv but is noisy per bucket).
+    from matplotlib.ticker import FuncFormatter
     y = s2v[(s2v.group == CG) & ~((s2v.bucket_start_et == "09:30") & (s2v.bucket_end_et == "16:00"))]
     fig, axes = plt.subplots(2, 1, figsize=(11, 8), sharex=True)
-    for ax, col, lab in ((axes[0], "spread_over_sd1m", "Quoted spread / sd(1-min mid return)"),
-                         (axes[1], "spread_over_sd5m", "Quoted spread / sd(5-min mid return)")):
+    for ax, col, lab in ((axes[0], "spread_over_bar_sd1m", "Quoted spread / sd(1-min return)"),
+                         (axes[1], "spread_over_bar_sd5m", "Quoted spread / sd(5-min return)")):
         ax.set_yscale("log")
         ser = {}
         for T in TICKERS:
@@ -753,10 +756,13 @@ def charts(sp, s2v, ds):
         allv = np.concatenate([v[1] for v in ser.values()])
         ax.set_ylim(np.nanmin(allv) * 0.8, np.nanmax(allv) * 1.3)
         focus_lines(ax, ser, logy=True)
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}"))
+        ax.yaxis.set_minor_formatter(FuncFormatter(lambda v, _: f"{v:g}" if str(f"{v:g}")[0] in "235" else ""))
         ax.set_ylabel(lab + " (log)")
     labels2 = sorted(y.bucket_start_et.unique())
     axes[1].set_xticks(range(len(labels2))); axes[1].set_xticklabels(labels2, fontsize=8)
-    axes[0].set_title("Spread / sd(mid return) by time of day, 7 normal days since 2026-07-15 (lower = spread small vs typical move)", fontsize=10)
+    axes[1].set_xlabel("30-minute bucket start (ET)")
+    axes[0].set_title("Spread-to-volatility by time of day: quoted spread (7 sampled days since 2026-07-15) / sd of returns (1-min bars, all sessions since 2026-07-15)", fontsize=9)
     fig.subplots_adjust(right=0.9, hspace=0.08, top=0.95, bottom=0.07, left=0.09)
     fig.savefig(OUT / "spread_to_vol.png", dpi=110); plt.close(fig)
     # 3b) regime chart: per sample day RTH spread (ticks, bps) and one-tick share, SOXL vs SOXS, 2022-2026

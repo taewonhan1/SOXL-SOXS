@@ -18,8 +18,8 @@ python scripts/estimate_spreads.py                   # fallback half-spreads fro
 python scripts/run_quality.py                        # data-quality report -> analysis/backtests/output/data_quality_report.md
 python scripts/daily_tracker.py                      # one row per day per ticker -> daily_tracker_SOXL_SOXS.csv
 python scripts/daily_tracker.py --live               # today's session so far (REST polling), --interval 60 to loop
-python scripts/run_battery.py                        # behavior-probe battery (~10 min) -> battery_*.csv / *.png
-python -m pytest -q tests                            # 29 tests: harness timing, stop-first, costs, DST, look-ahead
+python scripts/run_battery.py                        # behavior-probe battery (~15-20 min; --stages 1,2,3,4,5) -> battery_*.csv / *.png
+python -m pytest -q -p no:cacheprovider tests       # 32 tests: harness timing, stop-first, costs, DST, look-ahead
 ```
 
 Authentication: the REST base URL is `https://api.massive.com`. In this environment the network proxy
@@ -169,7 +169,9 @@ The model charges **half-spread per side + per-share commission per side + SEC S
   * exposure (minutes held / session minutes), average holding time
 * `walk_forward()` selects a parameter set on each train window and reports it on the next test window. The battery
   uses rolling 24-month train / 6-month test windows.
-* `random_entry_baseline()` uses random entry times on the same days, with the same holding time and side.
+* `random_entry_baseline()` uses random entry times and **random sides** on the same days, with the same holding
+  times. Keeping the strategy's side would leak information: a random entry placed before the signal inherits its
+  direction, and realized holding times encode whether the trade worked.
 * `lag_entries()` and `shift_signalset()` build the lag -1 / 0 / +1 diagnostics; `shuffle_days()` builds the
   day-shuffled null.
 
@@ -216,7 +218,8 @@ Live tracking:
 
 ## Tests
 
-`python -m pytest -q tests` (29 tests, synthetic data, no network):
+`python -m pytest -q -p no:cacheprovider tests` (32 tests; 29 on synthetic data with no network, plus 3 real-data tests that are skipped
+when the cache is absent):
 * the fill is always at the next bar open
 * stop-first when both levels are touched, and gap-through stop fills
 * flat by 15:55 and 12:55 on early-close days
@@ -225,3 +228,4 @@ Live tracking:
 * cost units and sell-side fees; costs use unadjusted prices
 * DST conversion; half-day detection; every probe emits valid signals
 * truncation-invariance of all 97 features that don't look ahead, and detection of the look-ahead labels
+* the same truncation test on real cached SOXL/SOXS bars (2023-12 → 2024-03, 3 cut points)
