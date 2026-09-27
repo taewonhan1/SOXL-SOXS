@@ -151,10 +151,7 @@ def load_ticker(T, with_trades=True, with_snap=True):
             s = pd.read_parquet(TICK / T / f"{day}_snap.parquet")
             if len(s):
                 s["day"] = day; S.append(s)
-        if with_trades:
-            t = pd.read_parquet(TICK / T / f"{day}_trades.parquet")
-            if len(t):
-                t["day"] = day; TR.append(t)
+        # trades are loaded day by day in load_trades_prepped() to bound memory
     cat = lambda L: pd.concat(L, ignore_index=True) if L else pd.DataFrame()  # noqa: E731
     Q, H, D, S, TR, W = cat(Q), cat(H), cat(D), cat(S), cat(TR), cat(W)
     if len(H):
@@ -163,9 +160,40 @@ def load_ticker(T, with_trades=True, with_snap=True):
         D = D.merge(Q[["day", "wid", "sub_start", "kind", "stratum_start", "stratum_end"]], on=["day", "wid", "sub_start"], how="left")
     if len(S):
         S = S.merge(W[["day", "wid", "kind", "stratum_start", "stratum_end", "q0"]], on=["day", "wid"], how="left")
-    if len(TR):
-        TR = TR.merge(W[["day", "wid", "kind", "stratum_start", "stratum_end"]], on=["day", "wid"], how="left")
     return Q, H, D, S, TR, W
+
+
+KEEP = {"t": "int64", "price": "float64", "size": "float64", "dollars": "float64", "ex": "int16", "cond": "int64",
+        "wid": "int16", "stratum_start": "int16", "minute": "float32", "novol": "bool", "odd_flag": "bool", "trf": "bool",
+        "subpenny_px": "bool", "elig": "bool", "at_mid": "bool", "inside": "bool", "at_quote": "bool", "outside": "bool",
+        "quote_sign": "float32", "lr_sign": "float32", "eff_bps": "float32", "eff_cents": "float32",
+        "eff_signed_bps": "float32", "qspr_bps": "float32", "rs60_bps": "float32", "pi60_bps": "float32",
+        "rs300_bps": "float32", "pi300_bps": "float32"}
+
+
+def load_trades_prepped(T, W):
+    """Per-day enrichment (Lee-Ready etc.) with compact dtypes; returns one frame for all sample days."""
+    parts = []
+    for day in sorted(W["day"].unique()):
+        f = TICK / T / f"{day}_trades.parquet"
+        if not f.exists():
+            continue
+        t = pd.read_parquet(f)
+        if not len(t):
+            continue
+        t["day"] = day
+        t = t.merge(W[W.day == day][["wid", "kind", "stratum_start", "stratum_end"]], on="wid", how="left")
+        t = prep_trades(t, T)
+        t["qspr_bps"] = t["qspr"] / t["mid"] * 1e4
+        k = t[["day", "kind"]].copy()
+        t = t[list(KEEP)].astype(KEEP)
+        t["day"] = k["day"].values
+        t["kind"] = k["kind"].values
+        parts.append(t)
+    tr = pd.concat(parts, ignore_index=True)
+    tr["day"] = tr["day"].astype("category")
+    tr["kind"] = tr["kind"].astype("category")
+    return tr
 
 
 def explode_groups(df):
@@ -337,9 +365,9 @@ def eff_stats(e):
          "eff_bps_tw": e["eff_bps"].mean(), "eff_bps_dw": np.average(e["eff_bps"], weights=w),
          "eff_bps_median": e["eff_bps"].median(),
          "eff_cents_tw": e["eff_cents"].mean(), "eff_cents_dw": np.average(e["eff_cents"], weights=w),
-         "quoted_bps_at_trade_tw": (e["qspr"] / e["mid"] * 1e4).mean(),
-         "quoted_bps_at_trade_dw": np.average(e["qspr"] / e["mid"] * 1e4, weights=w),
-         "eff_over_quoted_dw": np.average(e["eff_bps"], weights=w) / np.average(e["qspr"] / e["mid"] * 1e4, weights=w),
+         "quoted_bps_at_trade_tw": e["qspr_bps"].mean(),
+         "quoted_bps_at_trade_dw": np.average(e["qspr_bps"], weights=w),
+         "eff_over_quoted_dw": np.average(e["eff_bps"], weights=w) / np.average(e["qspr_bps"], weights=w),
          "share_at_mid": e["at_mid"].mean(), "share_inside_not_mid": e["inside"].mean(),
          "share_at_quote": e["at_quote"].mean(), "share_outside": e["outside"].mean(),
          "share_signed_by_quote_rule": (e["quote_sign"] != 0).mean(),
@@ -427,7 +455,7 @@ def main(cost_only=False):
                           "n_subpenny_quotes_all_sessions": int(Qg[Qg.group == g]["n_subpenny_quotes"].sum()),
                           "n_quote_msgs_all_sessions": int(Qg[Qg.group == g]["n_msg"].sum())})
         # trades
-        tr = prep_trades(TR, T)
+        tr = load_trades_prepped(T, W)
         gdays = {}
         for d in tr.day.unique():
             for gname in groups_for(d):
@@ -545,7 +573,8 @@ def main(cost_only=False):
                            "n_elig_trades": es.get("n_trades")})
         # depth / dynamics tables are subsets of the bucket table
         print(T, "done", flush=True)
-        del tr, TR, S, s, s1, s5
+        del tr, S, s, s1, s5
+        import gc; gc.collect()
     # ---- write cost table (schema fixed)
     cols = ["ticker", "year", "bucket_start_et", "bucket_end_et", "median_spread_cents", "mean_spread_cents",
             "median_half_spread_bps", "mean_half_spread_bps", "n_obs"]
@@ -633,6 +662,7 @@ def fullday():
             tr = pd.read_parquet(f)
             tr["kind"] = "rth"; tr["wid"] = 0; tr["stratum_start"] = 0; tr["stratum_end"] = 0; tr["day"] = day
             tr = prep_trades(tr, T)
+            tr["qspr_bps"] = tr["qspr"] / tr["mid"] * 1e4
             et = pd.to_datetime(tr["t"], unit="ns", utc=True).dt.tz_convert(ET)
             tr["minute"] = et.dt.hour * 60 + et.dt.minute + et.dt.second / 60
             rth = (tr.minute >= 570) & (tr.minute < 960)

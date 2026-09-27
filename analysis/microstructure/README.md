@@ -27,7 +27,8 @@ Wall-clock times above are for 2 worker threads per process; the download steps 
 so several processes with disjoint `--tickers` (or reversed `--days` lists) finish faster than one process with
 many threads. Files are written atomically per ticker-day, so overlapping processes are safe.
 
-`02` and `03` accept `--workers` (default 4 and 2; keep the total at or below about 6 concurrent requests,
+`05_tick_analysis.py` peaks at about 12 GB of RAM (NVDA alone has 24.1M sampled trades); run it with nothing else
+memory-heavy on a 16 GB machine. `02` and `03` accept `--workers` (default 4 and 2; keep the total at or below about 6 concurrent requests,
 since other analysts share the API) and `--tickers` / `--days` filters.
 
 ## Sampling design (ms_common.py)

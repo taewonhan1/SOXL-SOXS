@@ -252,7 +252,7 @@ def main():
     ap.add_argument("--phase", default="all")
     ap.add_argument("--tickers", default=",".join(TICKERS))
     ap.add_argument("--days", default="")
-    ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
     sd = sample_days()
