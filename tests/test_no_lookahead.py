@@ -86,3 +86,35 @@ def test_dictionary_covers_features():
     assert {"name", "definition", "granularity", "look_ahead_safe"} <= set(dd.columns)
     assert dd["look_ahead_safe"].sum() >= 30
     assert (~dd["look_ahead_safe"]).sum() >= 1
+
+
+# ------------------------------------------------------------------------------------------------
+# Same truncation test on REAL cached Massive data (skipped when the cache is absent)
+# ------------------------------------------------------------------------------------------------
+from soxlab import config as _cfg  # noqa: E402
+
+_HAVE_CACHE = (_cfg.BARS_DIR / "adjusted" / "SOXL" / "2024-02.parquet").exists() and \
+              (_cfg.REF_DIR / "calendar.parquet").exists()
+
+
+@pytest.mark.skipif(not _HAVE_CACHE, reason="real-data cache not present (run scripts/download_data.py)")
+@pytest.mark.parametrize("d_star,j_star", [(35, 3), (41, 123), (47, 386)])
+def test_real_data_features_truncation_invariant(d_star, j_star):
+    from soxlab import pipeline
+    ctx = pipeline.load_context(start="2023-12-01", end="2024-03-28", verbose=False)
+    panels, official, premarket, cal = ctx["panels"], ctx["official"], ctx["premarket"], ctx["cal"]
+    for ticker in ("SOXL", "SOXS"):
+        full = ctx["features"][ticker]
+        pt, ot, mt = _truncated_inputs(panels, official, premarket, d_star, j_star)
+        trunc = sfeat.compute_features(ticker, pt, ot, mt, cal)
+        bad = []
+        for k in full:
+            if k.startswith("label_"):
+                continue
+            a = np.asarray(full[k][: d_star + 1], float).copy()
+            b = np.asarray(trunc[k][: d_star + 1], float).copy()
+            a[d_star, j_star + 1:] = np.nan
+            b[d_star, j_star + 1:] = np.nan
+            if not np.allclose(a, b, equal_nan=True, rtol=1e-6, atol=1e-9):
+                bad.append(k)
+        assert not bad, f"{ticker}: look-ahead detected in {bad}"

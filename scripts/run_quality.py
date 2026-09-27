@@ -76,6 +76,37 @@ def minute_bar(T: str, day: str, hhmm: str, adjusted: bool = False) -> dict:
     return r.iloc[0][["o", "h", "l", "c", "v", "n"]].to_dict() if len(r) else {}
 
 
+def coverage_heatmap(cov: pd.DataFrame) -> None:
+    """Sequential (one-hue) heatmap of RTH missing-minute share by ticker x year."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LinearSegmentedColormap, LogNorm
+    ramp = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
+    cmap = LinearSegmentedColormap.from_list("blue_seq", ramp)
+    piv = cov.pivot_table(index="ticker", columns="year", values="rth_missing_pct")
+    piv = piv.loc[["SOXL", "SOXS", "SOXX", "SMH", "NVDA", "QQQ", "TQQQ", "SQQQ"]]
+    fig, ax = plt.subplots(figsize=(8, 3.6), facecolor="#fcfcfb")
+    ax.set_facecolor("#fcfcfb")
+    im = ax.imshow(np.clip(piv.values, 0.001, None), cmap=cmap, norm=LogNorm(vmin=0.001, vmax=20), aspect="auto")
+    ax.set_xticks(range(piv.shape[1]), [str(c) for c in piv.columns], color="#52514e", fontsize=8)
+    ax.set_yticks(range(piv.shape[0]), piv.index, color="#52514e", fontsize=8)
+    for i in range(piv.shape[0]):
+        for j in range(piv.shape[1]):
+            v = piv.values[i, j]
+            ax.text(j, i, f"{v:.2f}" if v >= 0.01 else ("0" if v == 0 else "<0.01"), ha="center", va="center",
+                    fontsize=7, color="#ffffff" if v > 1 else "#0b0b0b")
+    for sp in ax.spines.values():
+        sp.set_visible(False)
+    cb = fig.colorbar(im, ax=ax, shrink=0.8)
+    cb.set_label("% of RTH minutes with no bar (log scale)", color="#52514e", fontsize=8)
+    ax.set_title("Regular-session minutes without a 1-min bar (zero-trade minutes), by ticker and year",
+                 loc="left", fontsize=9, color="#0b0b0b")
+    fig.tight_layout()
+    fig.savefig(OUT / "dq_rth_missing_minutes.png", dpi=110)
+    plt.close(fig)
+
+
 def main() -> None:
     t0 = time.time()
     OUT.mkdir(parents=True, exist_ok=True)
@@ -88,6 +119,7 @@ def main() -> None:
     # 1. coverage / integrity
     cov = q.coverage(config.TICKERS, cal)
     cov.to_csv(OUT / "dq_coverage.csv", index=False)
+    coverage_heatmap(cov)
     piv = cov.pivot_table(index="ticker", columns="year", values="rth_missing_pct").round(3)
     rep += ["## 1. Missing (zero-trade) minutes in the regular session", "",
             "Massive emits a minute bar only when at least one eligible trade prints, so zero-trade minutes are "

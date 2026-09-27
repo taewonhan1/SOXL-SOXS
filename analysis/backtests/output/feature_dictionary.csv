@@ -1,0 +1,40 @@
+name,definition,granularity,look_ahead_safe
+ret_1m,log(c_j / c_{j-1}); bar 0 uses log(c_0/o_0),1-min,True
+"ret_{5,15,30,60}m",log(c_j / c_{j-k}); NaN until k bars into the session (no overnight mixing),1-min,True
+ret_since_open,log(c_j / o_0) where o_0 is the 09:30 bar open,1-min,True
+true_range_1m[_bps],"max(h_j, c_{j-1}) - min(l_j, c_{j-1}) (bps: / c_j)",1-min,True
+atr14_1m[_bps],"Wilder ATR(14) of 1-min true range, reset each session",1-min,True
+rv_30m / rv_30m_ann,sqrt(sum of squared 1-min log returns over last 30 bars); ann. x sqrt(252*390/30),1-min,True
+atr14_d / atr14_d_pct,Wilder ATR(14) of daily true range (RTH high/low vs prior official close) through day d-1,daily (constant intraday),True
+rv20_d_ann,stdev of 20 prior daily close-to-close log returns x sqrt(252),daily,True
+vwap,session VWAP from 09:30: cumsum(vw*v)/cumsum(v) over bars 0..j (bar vw = bar VWAP),1-min,True
+"vwap_sd, vwap_up{1,2,3}, vwap_dn{1,2,3}",volume-weighted stdev of bar vw around VWAP; bands = vwap +/- k*sd,1-min,True
+dist_vwap_bps / dist_vwap_sd,(c_j/vwap_j - 1)*1e4 ; (c_j - vwap_j)/vwap_sd_j,1-min,True
+vwap_cross_count,cumulative number of sign changes of (c - vwap) since the open,1-min,True
+"or{5,15,30}_high/low/size_bps",high/low of the first N regular-session bars; NaN before bar N-1 closes,1-min,True
+pm_high / pm_low / pm_volume / pm_ret,"pre-market 04:00-09:29 ET high, low, volume, last/prior-official-close - 1",daily,True
+pd_high / pd_low / pd_close,prior session RTH high/low (from minute bars) and prior OFFICIAL close (daily bar),daily,True
+gap / gap_atr / flag_large_gap,o_0/pd_close - 1 ; (o_0 - pd_close)/atr14_d ; |gap| > 1 ATR,daily (known at bar 0 close),True
+dist_pd_high_bps / dist_pd_low_bps,(c_j / pd_high - 1)*1e4 etc.,1-min,True
+ret_since_prev_close,c_j / pd_close - 1 (simple return since last official close),1-min,True
+cum_volume,cumulative RTH volume through bar j,1-min,True
+rvol_tod,cum_volume_j / mean(cum_volume at the same bar over the prior 20 sessions),1-min,True
+cumvol_share,cum_volume_j / mean(total RTH volume of prior 20 sessions),1-min,True
+rvol_1m,v_j / mean(v at the same bar over prior 20 sessions),1-min,True
+ema9_1m / ema21_1m / ema_diff_1m_bps,EMA(9)/EMA(21) of 1-min closes (session reset); diff in bps,1-min,True
+ema9_5m / ema21_5m / ema_diff_5m_bps,"EMAs of 5-min closes, updated when each 5-min bar completes, held in between",5-min (on 1-min grid),True
+"{SOXX,NVDA,QQQ,SMH}_ret_1m[_lag1,_lag2]",driver 1-min log return (and lagged by 1/2 bars) on the same minute grid,1-min,True
+{driver}_ret_5m / {driver}_ret_since_prev_close,driver 5-min log return ; driver c_j / prior official close - 1,1-min,True
+idx_ret_since_prev_close,index-proxy (SOXX for SOXL/SOXS) return since its prior official close = r,1-min,True
+lev_implied,"L(1+r)/(1+L*r): exposure/NAV of a daily-reset L-x fund after index move r (L=+3 SOXL, -3 SOXS)",1-min,True
+tracking_gap_bps,(ret_since_prev_close - L*r)*1e4: deviation from L x proxy move since the close,1-min,True
+lev_realized,ret_since_prev_close / r when |r| > 0.25%,1-min,True
+soxl_soxs_div_bps,(SOXL ret since prior close + SOXS ret since prior close)*1e4 (0 under perfect tracking),1-min,True
+soxl_soxs_ret1m_sum_bps,(SOXL 1-min log ret + SOXS 1-min log ret)*1e4,1-min,True
+minute_of_session / minutes_to_close,bar index j (0 = 09:30) ; session bars remaining (half-days end 13:00),1-min,True
+dow,day of week (0 = Monday),daily,True
+"flag_is_half_day, flag_pre_holiday, flag_post_holiday",early close (13:00) ; next / previous weekday is a market holiday,daily,True
+"flag_month_end, flag_month_start, flag_quarter_end",last / first trading day of month ; last trading day of quarter,daily,True
+"flag_monthly_opex, flag_quad_witching",3rd Friday (or prior trading day) ; same in Mar/Jun/Sep/Dec,daily,True
+"flag_split, flag_exdiv",split execution date / ex-dividend date of the ticker (from /v3/reference),daily,True
+label_fwd_ret_1m / label_fwd_ret_5m / label_fwd_ret_to_close,FUTURE log returns c_{j+k}/c_j - research labels only,1-min,False

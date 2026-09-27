@@ -19,6 +19,8 @@ from . import config
 from . import data as sdata
 
 LN = np.log
+PRICE_LEVEL = {"pm_high", "pm_low", "pd_high", "pd_low", "pd_close", "atr14_1m", "atr14_d", "true_range_1m",
+               "gap", "gap_atr", "ret_since_prev_close", "dist_vwap_sd"}
 
 
 # --------------------------------------------------------------------------------------
@@ -283,8 +285,10 @@ def compute_features(ticker: str, panels: dict, official: dict, premarket: dict,
     F["label_fwd_ret_5m"] = LN(shift_cols(c, -5) / c)
     last = np.array([c[i, p.n_min[i] - 1] for i in range(nd)])
     F["label_fwd_ret_to_close"] = LN(last[:, None] / c)
+    # price-level features (compared against prices by strategies) stay float64; the rest float32 (memory)
     for k in list(F):
-        F[k] = np.where(inside, F[k], np.nan).astype(np.float64)
+        keep64 = k in PRICE_LEVEL or k.startswith(("or5_", "or15_", "or30_", "vwap", "ema"))
+        F[k] = np.where(inside, F[k], np.nan).astype(np.float64 if keep64 else np.float32)
     return F
 
 

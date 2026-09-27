@@ -1,0 +1,69 @@
+{
+ "spread_source": "/home/user/SOXL-SOXS/analysis/microstructure/output/cost_model_halfspread.csv",
+ "spread_source_mtime_utc": "2026-09-27T19:54:06.037554979+00:00",
+ "spread_source_sha256": "c670ebda954c23bd06e23083e311ccd2acadc088dcf89bfb164f8d1a9ebf5bbd",
+ "spread_stat": "median_spread_cents",
+ "commission_per_share": 0.0035,
+ "notional_usd": 25000.0,
+ "sec_fee_schedule": [
+  [
+   "2021-01-01",
+   5.1
+  ],
+  [
+   "2022-05-14",
+   22.9
+  ],
+  [
+   "2023-02-27",
+   8.0
+  ],
+  [
+   "2024-05-22",
+   27.8
+  ],
+  [
+   "2025-05-14",
+   0.0
+  ],
+  [
+   "2026-04-04",
+   20.6
+  ]
+ ],
+ "finra_taf_schedule": [
+  [
+   "2021-01-01",
+   0.00013,
+   6.49
+  ],
+  [
+   "2022-01-01",
+   0.000145,
+   7.27
+  ],
+  [
+   "2024-01-01",
+   0.000166,
+   8.3
+  ],
+  [
+   "2026-01-01",
+   0.000195,
+   9.79
+  ]
+ ],
+ "periods": {
+  "IS": [
+   "2022-01-01",
+   "2024-09-30"
+  ],
+  "OOS": [
+   "2024-10-01",
+   "2026-09-25"
+  ]
+ },
+ "execution": "signal at bar close -> fill at next bar open; stop-first; flat by 15:55 ET (12:55 half-days)",
+ "stage1_run_utc": "2026-09-27T20:03:52.906425+00:00",
+ "stage2_run_utc": "2026-09-27T20:05:06.567988+00:00"
+}

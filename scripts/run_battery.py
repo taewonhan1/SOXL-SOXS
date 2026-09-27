@@ -216,25 +216,13 @@ def charts(summary: pd.DataFrame, curves: dict, xc: pd.DataFrame) -> None:
 
 
 # ------------------------------------------------------------------------------------------------
-def main() -> None:
-    t0 = time.time()
-    OUT.mkdir(parents=True, exist_ok=True)
-    ctx = pipeline.load_context()
+def stage_canonical(ctx, cm, t0):
     cal_idx = ctx["cal"].index
-    cm = CostModel.default()
-    src = Path(cm.spread_source)
-    info = {"run_started_utc": pd.Timestamp.now(tz="UTC").isoformat(), "spread_source": str(src),
-            "spread_source_mtime_utc": pd.Timestamp(src.stat().st_mtime, unit="s", tz="UTC").isoformat() if src.exists() else None,
-            "spread_source_sha256": hashlib.sha256(src.read_bytes()).hexdigest() if src.exists() else None,
-            "spread_stat": cm.spread_stat, "commission_per_share": cm.commission_per_share, "notional_usd": cm.notional,
-            "sec_fee_schedule": cm.sec_schedule, "finra_taf_schedule": cm.taf_schedule,
-            "periods": PERIODS, "execution": "signal at bar close -> fill at next bar open; stop-first; flat by 15:55 ET"}
-    print("cost model:", info["spread_source"])
-
-    summary, yearly, curves, canon_trades = [], [], {}, {}
+    summary, yearly, canon_trades = [], [], {}
     for probe in st.PROBES:
         for mode in MODES:
             tr = run_mode(probe, mode, ctx, cm)
+            tr["probe"] = probe
             canon_trades[(probe, mode)] = tr
             for per, (a, b) in PERIODS.items():
                 days = days_between(cal_idx, a, b)
@@ -243,26 +231,43 @@ def main() -> None:
                     t = tr if side == "all" else tr[tr["side"] == (1 if side == "long" else -1)]
                     if mode == "switch" and side != "all":
                         t = tr[tr["ticker"] == ("SOXL" if side == "long" else "SOXS")]
-                    summary.append(summarize(t, days, sm, {"probe": probe, "family": st.PROBE_FAMILY[probe],
-                                                           "mode": mode, "variant": "canonical", "period": per,
-                                                           "side": side if mode != "switch" else
-                                                           {"all": "all", "long": "long SOXL", "short": "long SOXS"}[side]}))
+                    lab = side if mode != "switch" else {"all": "all", "long": "long SOXL", "short": "long SOXS"}[side]
+                    summary.append(summarize(t, days, sm, {"probe": probe, "family": st.PROBE_FAMILY[probe], "mode": mode,
+                                                           "variant": "canonical", "period": per, "side": lab}))
             for y in YEARS:
                 days = cal_idx[cal_idx.year == y]
                 yearly.append(summarize(tr, days, sess_minutes(ctx, mode, days),
                                         {"probe": probe, "mode": mode, "year": y,
                                          "sample": "pre-IS" if y < 2022 else ("IS" if y < 2024 else "IS/OOS split" if y == 2024 else "OOS")}))
-            d22 = days_between(cal_idx, config.IS_START, config.OOS_END)
-            if mode != "switch":
-                daily = tr[tr["date"].isin(d22)].groupby("date")["net_bps"].sum().reindex(d22).fillna(0) / 100
-                curves[(probe, mode)] = daily.cumsum()
-        print(f"  {probe:16s} done  ({time.time() - t0:.0f}s)")
-    summary = pd.DataFrame(summary)
-    yearly = pd.DataFrame(yearly)
+        print(f"  canonical {probe:16s} done  ({time.time() - t0:.0f}s)", flush=True)
+    summary, yearly = pd.DataFrame(summary), pd.DataFrame(yearly)
+    summary.to_csv(OUT / "battery_summary.csv", index=False, float_format="%.4f")
+    yearly.to_csv(OUT / "battery_yearly.csv", index=False, float_format="%.4f")
+    all_tr = pd.concat(canon_trades.values(), ignore_index=True)
+    config.CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    all_tr.to_parquet(config.CACHE_DIR / "battery_trades_canonical.parquet", index=False)
+    return summary
 
-    # ---- in-sample selection on the grid + rolling walk-forward
-    sel_rows, wf_rows = [], []
-    windows = []
+
+def load_canonical():
+    tr = pd.read_parquet(config.CACHE_DIR / "battery_trades_canonical.parquet")
+    return {(pr, md): g.copy() for (pr, md), g in tr.groupby(["probe", "mode"], sort=False)}
+
+
+def equity_curves(canon_trades, cal_idx):
+    d22 = days_between(cal_idx, config.IS_START, config.OOS_END)
+    curves = {}
+    for (probe, mode), tr in canon_trades.items():
+        if mode == "switch":
+            continue
+        daily = tr[tr["date"].isin(d22)].groupby("date")["net_bps"].sum().reindex(d22).fillna(0) / 100
+        curves[(probe, mode)] = daily.cumsum()
+    return curves
+
+
+def stage_grid(ctx, cm, t0):
+    cal_idx = ctx["cal"].index
+    sel_rows, wf_rows, windows = [], [], []
     start = pd.Timestamp("2020-01-01")
     while True:
         tr_a, tr_b = start, start + pd.DateOffset(months=24) - pd.Timedelta(days=1)
@@ -271,11 +276,11 @@ def main() -> None:
             break
         windows.append((tr_a, tr_b, te_a, min(te_b, pd.Timestamp(config.OOS_END))))
         start = start + pd.DateOffset(months=6)
+    is_days = days_between(cal_idx, *PERIODS["IS"])
+    oos_days = days_between(cal_idx, *PERIODS["OOS"])
     for probe, (gen, canon, grid) in st.PROBES.items():
         for mode in ("SOXL L/S", "SOXS L/S"):
             by_param = {json.dumps(g, sort_keys=True): run_mode(probe, mode, ctx, cm, params=g) for g in grid}
-            is_days = days_between(cal_idx, *PERIODS["IS"])
-            oos_days = days_between(cal_idx, *PERIODS["OOS"])
             best, best_v = None, -np.inf
             for lab, tr in by_param.items():
                 m = bt.metrics(tr, is_days)
@@ -303,11 +308,12 @@ def main() -> None:
                                 "selections": "; ".join(f"{r['test_start']:%Y-%m}:{r['selected']}" for _, r in wf.iterrows()),
                                 **{f"stitched_{k}": ms.get(k) for k in ("n_trades", "avg_gross_bps", "avg_net_bps",
                                                                          "sharpe_net", "t_stat_net", "max_dd_net_pct")}})
-        print(f"  grid/WF {probe:16s} done  ({time.time() - t0:.0f}s)")
-    sel = pd.DataFrame(sel_rows)
-    wfd = pd.DataFrame(wf_rows)
+        print(f"  grid/WF {probe:16s} done  ({time.time() - t0:.0f}s)", flush=True)
+    pd.DataFrame(sel_rows).to_csv(OUT / "battery_is_selected_oos.csv", index=False, float_format="%.4f")
+    pd.DataFrame(wf_rows).to_csv(OUT / "battery_walkforward.csv", index=False, float_format="%.4f")
 
-    # ---- random-entry baseline
+
+def stage_random(ctx, cm, canon_trades, n_iter, t0):
     rb_rows = []
     for (probe, mode), tr in canon_trades.items():
         if mode == "switch":
@@ -319,21 +325,22 @@ def main() -> None:
             t = tr[(tr["date"] >= pd.Timestamp(a)) & (tr["date"] <= pd.Timestamp(b))]
             if len(t) < 10:
                 continue
-            rb = bt.random_entry_baseline(p, t, cm, n_iter=200, seed=hash((probe, mode, per)) % 2**32,
-                                          earliest_entry_bar=ss.rules.earliest_entry_bar)
+            seed = int(hashlib.md5(f"{probe}|{mode}|{per}".encode()).hexdigest()[:8], 16)
+            rb = bt.random_entry_baseline(p, t, cm, n_iter=n_iter, seed=seed, earliest_entry_bar=ss.rules.earliest_entry_bar)
             strat = t["net_bps"].mean()
-            rb_rows.append({"probe": probe, "mode": mode, "period": per, "n_trades": len(t),
+            rb_rows.append({"probe": probe, "mode": mode, "period": per, "n_trades": len(t), "n_iter": n_iter,
                             "strategy_avg_net_bps": strat, "strategy_avg_gross_bps": t["gross_bps"].mean(),
                             "random_avg_net_bps_mean": rb["avg_net_bps"].mean(),
                             "random_avg_net_bps_p05": rb["avg_net_bps"].quantile(0.05),
                             "random_avg_net_bps_p95": rb["avg_net_bps"].quantile(0.95),
                             "random_avg_gross_bps_mean": rb["avg_gross_bps"].mean(),
                             "strategy_percentile_vs_random": float((rb["avg_net_bps"] < strat).mean() * 100)})
-    rbd = pd.DataFrame(rb_rows)
-    print(f"  random baselines done ({time.time() - t0:.0f}s)")
+        print(f"  random {probe:16s} {mode} done ({time.time() - t0:.0f}s)", flush=True)
+    pd.DataFrame(rb_rows).to_csv(OUT / "battery_random_baseline.csv", index=False, float_format="%.4f")
 
-    # ---- timing diagnostics: lag -1 (look-ahead), 0, +1, day-shuffled
-    diag = []
+
+def stage_diagnostics(ctx, cm, t0):
+    cal_idx = ctx["cal"].index
     d_all = days_between(cal_idx, config.IS_START, config.OOS_END)
 
     def lagger(k):
@@ -355,62 +362,86 @@ def main() -> None:
                                 pick(rel.exit_short)), pick(tp)
         return f
 
+    diag = []
     for probe in st.PROBES:
         for mode in ("SOXL L/S", "SOXS L/S"):
             for lab, tf in (("lag-1 (look-ahead, not tradable)", lagger(-1)), ("lag 0 (harness default, relative stops)", lagger(0)),
-                            ("lag+1 (one extra bar delay)", lagger(1)), ("day-shuffled signals", shuffler(1)),
+                            ("lag+1 (one extra bar delay)", lagger(1)), ("day-shuffled signals (seed 1)", shuffler(1)),
                             ("day-shuffled signals (seed 2)", shuffler(2))):
                 tr = run_mode(probe, mode, ctx, cm, transform=tf)
                 m = bt.metrics(tr, d_all)
                 diag.append({"probe": probe, "mode": mode, "variant": lab, "n_trades": m["n_trades"],
                              "avg_gross_bps": m.get("avg_gross_bps"), "avg_net_bps": m.get("avg_net_bps"),
                              "sharpe_gross": m.get("sharpe_gross"), "t_stat_gross": m.get("t_stat_gross")})
-    diagd = pd.DataFrame(diag)
-    print(f"  timing diagnostics done ({time.time() - t0:.0f}s)")
+        print(f"  diagnostics {probe:16s} done ({time.time() - t0:.0f}s)", flush=True)
+    pd.DataFrame(diag).to_csv(OUT / "battery_timing_diagnostics.csv", index=False, float_format="%.4f")
 
-    # ---- multiple testing on canonical OOS results
+
+def stage_tests_charts(ctx, canon_trades, t0):
+    summary = pd.read_csv(OUT / "battery_summary.csv")
     mt = summary[(summary["side"] == "all") & (summary["variant"] == "canonical")].copy()
     rows = []
     for per in ("IS", "OOS"):
         s = mt[mt["period"] == per].copy()
         s["p_value"] = 2 * (1 - stats.norm.cdf(np.abs(s["t_stat_net"].astype(float))))
         s = s.sort_values("p_value")
-        m_ = s["p_value"].notna().sum()
+        m_ = int(s["p_value"].notna().sum())
         ranks = np.arange(1, len(s) + 1)
-        q = (s["p_value"].to_numpy() * m_ / ranks)
+        q = s["p_value"].to_numpy() * m_ / ranks
         q = np.minimum.accumulate(q[::-1])[::-1]
         s["bh_q_value"] = np.minimum(q, 1.0)
         s["bonferroni_p"] = np.minimum(s["p_value"] * m_, 1.0)
         s["n_tests"] = m_
         rows.append(s[["probe", "mode", "period", "n_trades", "avg_net_bps", "sharpe_net", "t_stat_net", "p_value",
                        "bh_q_value", "bonferroni_p", "n_tests"]])
-    mtd = pd.concat(rows)
-
-    # ---- lead-lag cross-correlations
+    pd.concat(rows).to_csv(OUT / "battery_multiple_testing.csv", index=False, float_format="%.5f")
     xc = lead_lag_xcorr(ctx)
-
-    # ---- write
-    summary.to_csv(OUT / "battery_summary.csv", index=False, float_format="%.4f")
-    yearly.to_csv(OUT / "battery_yearly.csv", index=False, float_format="%.4f")
-    sel.to_csv(OUT / "battery_is_selected_oos.csv", index=False, float_format="%.4f")
-    wfd.to_csv(OUT / "battery_walkforward.csv", index=False, float_format="%.4f")
-    rbd.to_csv(OUT / "battery_random_baseline.csv", index=False, float_format="%.4f")
-    diagd.to_csv(OUT / "battery_timing_diagnostics.csv", index=False, float_format="%.4f")
-    mtd.to_csv(OUT / "battery_multiple_testing.csv", index=False, float_format="%.5f")
     xc.to_csv(OUT / "leadlag_xcorr.csv", index=False, float_format="%.5f")
-    all_tr = pd.concat(canon_trades.values(), ignore_index=True)
-    all_tr["probe"] = np.repeat([k[0] for k in canon_trades], [len(v) for v in canon_trades.values()])
-    config.CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    all_tr.to_parquet(config.CACHE_DIR / "battery_trades_canonical.parquet", index=False)
-    charts(summary, curves, xc)
-    info["run_seconds"] = round(time.time() - t0, 1)
-    info["n_summary_rows"] = len(summary)
-    (OUT / "battery_run_info.json").write_text(json.dumps(info, indent=1, default=str))
-    print(f"battery done in {time.time() - t0:.0f}s")
-    view = summary[(summary["side"] == "all")][["probe", "mode", "period", "n_trades", "avg_gross_bps", "avg_net_bps",
-                                                 "win_rate", "profit_factor", "sharpe_net", "max_dd_net_pct", "exposure"]]
-    with pd.option_context("display.width", 220, "display.max_rows", 200):
-        print(view.round(3).to_string(index=False))
+    charts(summary, equity_curves(canon_trades, ctx["cal"].index), xc)
+    print(f"  tests/xcorr/charts done ({time.time() - t0:.0f}s)", flush=True)
+
+
+def main() -> None:
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--stages", default="1,2,3,4,5",
+                    help="1 canonical, 2 grid/walk-forward, 3 random baseline, 4 timing diagnostics, 5 tests/xcorr/charts")
+    ap.add_argument("--n-random", type=int, default=200)
+    args = ap.parse_args()
+    stages = {int(x) for x in args.stages.split(",")}
+    t0 = time.time()
+    OUT.mkdir(parents=True, exist_ok=True)
+    ctx = pipeline.load_context()
+    cm = CostModel.default()
+    src = Path(cm.spread_source)
+    info_path = OUT / "battery_run_info.json"
+    info = json.loads(info_path.read_text()) if info_path.exists() else {}
+    info.update({"spread_source": str(src),
+                 "spread_source_mtime_utc": pd.Timestamp(src.stat().st_mtime, unit="s", tz="UTC").isoformat() if src.exists() else None,
+                 "spread_source_sha256": hashlib.sha256(src.read_bytes()).hexdigest() if src.exists() else None,
+                 "spread_stat": cm.spread_stat, "commission_per_share": cm.commission_per_share, "notional_usd": cm.notional,
+                 "sec_fee_schedule": cm.sec_schedule, "finra_taf_schedule": cm.taf_schedule, "periods": PERIODS,
+                 "execution": "signal at bar close -> fill at next bar open; stop-first; flat by 15:55 ET (12:55 half-days)"})
+    print("cost model:", info["spread_source"], flush=True)
+    if 1 in stages:
+        stage_canonical(ctx, cm, t0)
+        info["stage1_run_utc"] = pd.Timestamp.now(tz="UTC").isoformat()
+    canon_trades = load_canonical()
+    if 2 in stages:
+        stage_grid(ctx, cm, t0)
+        info["stage2_run_utc"] = pd.Timestamp.now(tz="UTC").isoformat()
+    if 3 in stages:
+        stage_random(ctx, cm, canon_trades, args.n_random, t0)
+        info["stage3_run_utc"] = pd.Timestamp.now(tz="UTC").isoformat()
+        info["random_iterations"] = args.n_random
+    if 4 in stages:
+        stage_diagnostics(ctx, cm, t0)
+        info["stage4_run_utc"] = pd.Timestamp.now(tz="UTC").isoformat()
+    if 5 in stages:
+        stage_tests_charts(ctx, canon_trades, t0)
+        info["stage5_run_utc"] = pd.Timestamp.now(tz="UTC").isoformat()
+    info_path.write_text(json.dumps(info, indent=1, default=str))
+    print(f"battery stages {sorted(stages)} done in {time.time() - t0:.0f}s", flush=True)
 
 
 if __name__ == "__main__":
