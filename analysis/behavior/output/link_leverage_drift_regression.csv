@@ -1,0 +1,5 @@
+ticker,period,b_on_x,se_b,c_on_x_times_R,se_c,theory_b,theory_c_first_order,n
+SOXL,secondary,2.94749,0.00369893,-5.49682,0.187245,3,-6,52745
+SOXS,secondary,-2.9627,0.00390356,-11.0692,0.195267,-3,-12,52745
+SOXL,primary,2.99635,0.00286491,-5.83512,0.14631,3,-6,37961
+SOXS,primary,-3.03137,0.00679251,-13.5561,0.595642,-3,-12,37961

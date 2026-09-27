@@ -17,7 +17,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).parent))
-from ms_common import DATA, ET, OUT, TICKERS, focus_lines, style_ax  # noqa: E402
+from ms_common import DATA, ET, OUT, TICKERS, focus_lines, style_ax, trading_days_and_halfdays, FOCUS_COLORS, CONTEXT_GRAY, TEXT_SECONDARY  # noqa: E402
 
 BARS = DATA / "bars"
 REF = DATA / "ref"
@@ -118,9 +118,11 @@ def main():
     fig.savefig(OUT / "activity_trend.png", dpi=110); plt.close(fig)
 
     # ---------------- minute-bar statistics
-    ts_rows, vol_rows, prof_rows, sess_rows, gap_rows = [], [], [], [], []
+    ts_rows, vol_rows, prof_rows, sess_rows, gap_rows, mon_rows = [], [], [], [], [], []
+    _, half = trading_days_and_halfdays()
     for T in TICKERS:
         m = min_bars(T)
+        m = m[~m.date.isin(half)]  # half-days (13:00 close) excluded from all minute-bar statistics
         rth = m[(m.minute >= 570) & (m.minute < 960)].copy()
         # full 390-minute grid per day, forward-filled close (a missing minute = no eligible trade = no change)
         days = sorted(rth.date.unique())
@@ -144,18 +146,33 @@ def main():
                             "mean_abs_ticks_nonzero": tk[tk >= 0.5].mean(),
                             "share_missing_minutes": g[sel]["missing"].mean(),
                             "mean_price": x["c"].mean()})
-        # 1-min and 5-min close-to-close return std by 30-min bucket (last 12 months), trade-price based
-        l12 = g[(g.date >= "2025-09-26") & (g.date <= END)].copy()
-        l12["r1"] = np.log(l12["c"]).groupby(l12["date"]).diff() * 1e4
-        l12["bucket"] = 570 + ((l12["minute"] - 570) // 30) * 30
-        l12["c5"] = l12.groupby("date")["c"].shift(5)
-        l12["r5"] = np.log(l12["c"] / l12["c5"]) * 1e4
-        five = l12[(l12.minute - 570) % 5 == 4]  # non-overlapping 5-min returns ending on minute 4 of each 5
-        for b, x in l12.groupby("bucket"):
-            y5 = five[five.bucket == b]["r5"].dropna()
-            vol_rows.append({"ticker": T, "period": "last12m", "bucket_start": b, "std_r1_bps": x["r1"].std(),
-                             "n_r1": x["r1"].notna().sum(), "std_r5_bps": y5.std(), "n_r5": len(y5),
-                             "mean_abs_r1_bps": x["r1"].abs().mean()})
+        g["month"] = g["date"].str[:7]
+        x = g[g.dc.notna()]
+        gm = x.groupby("month")
+        mon = pd.DataFrame({"n": gm.size(), "share_zero_change": gm["ticks"].apply(lambda v: (v < 0.5).mean()),
+                            "mean_abs_ticks": gm["ticks"].mean(), "median_abs_ticks": gm["ticks"].median(),
+                            "mean_price": gm["c"].mean()}).reset_index()
+        mon["rel_tick_bps"] = 1e4 * 0.01 / mon["mean_price"]
+        mon.insert(0, "ticker", T)
+        mon_rows.append(mon)
+        # 1-min and 5-min close-to-close return std by 30-min bucket, trade-price based
+        for per, lo in (("last12m", "2025-09-26"), ("since_2026-07-15", "2026-07-15")):
+            l12 = g[(g.date >= lo) & (g.date <= END)].copy()
+            l12["r1"] = np.log(l12["c"]).groupby(l12["date"]).diff() * 1e4
+            l12["bucket"] = 570 + ((l12["minute"] - 570) // 30) * 30
+            l12["c5"] = l12.groupby("date")["c"].shift(5)
+            l12["r5"] = np.log(l12["c"] / l12["c5"]) * 1e4
+            five = l12[(l12.minute - 570) % 5 == 4]  # non-overlapping 5-min returns ending on minute 4 of each 5
+            for b, x in l12.groupby("bucket"):
+                y5 = five[five.bucket == b]["r5"].dropna()
+                vol_rows.append({"ticker": T, "period": per, "n_days": x.date.nunique(), "bucket_start": b,
+                                 "std_r1_bps": x["r1"].std(), "n_r1": x["r1"].notna().sum(), "std_r5_bps": y5.std(),
+                                 "n_r5": len(y5), "mean_abs_r1_bps": x["r1"].abs().mean()})
+            x = l12
+            y5 = five["r5"].dropna()
+            vol_rows.append({"ticker": T, "period": per, "n_days": x.date.nunique(), "bucket_start": -1,
+                             "std_r1_bps": x["r1"].std(), "n_r1": x["r1"].notna().sum(), "std_r5_bps": y5.std(),
+                             "n_r5": len(y5), "mean_abs_r1_bps": x["r1"].abs().mean()})
         # intraday volume profile (last 12 months, all sessions) from minute bars
         ml = m[(m.date >= "2025-09-26") & (m.date <= END)]
         tot = ml.groupby("date")["v"].sum()
@@ -193,6 +210,29 @@ def main():
                 gap_rows.append({"ticker": T, "date": dte, "last_bar_before": "open", "next_bar": f"{first // 60:02d}:{first % 60:02d}",
                                  "missing_minutes": int(first - 570)})
     pd.DataFrame(ts_rows).to_csv(OUT / "minbar_tick_stats.csv", index=False)
+    mon = pd.concat(mon_rows)
+    mon.to_csv(OUT / "minbar_tick_stats_monthly.csv", index=False)
+    # tick-constraint scatter: relative tick vs share of zero-change 1-min bars (ticker-months)
+    fig, ax = plt.subplots(figsize=(9, 6))
+    for T in TICKERS:
+        d = mon[mon.ticker == T]
+        if T in FOCUS_COLORS:
+            continue
+        ax.scatter(d.rel_tick_bps, d.share_zero_change * 100, s=10, color=CONTEXT_GRAY, alpha=0.7, lw=0)
+    for T in ("SOXL", "SOXS"):
+        d = mon[mon.ticker == T]
+        ax.scatter(d.rel_tick_bps, d.share_zero_change * 100, s=22, color=FOCUS_COLORS[T], label=T, lw=0.6, edgecolor="white")
+        last = d.iloc[-1]
+        ax.annotate(f"{T} Sep-2026", (last.rel_tick_bps, last.share_zero_change * 100), xytext=(6, 6), textcoords="offset points",
+                    fontsize=8, color=FOCUS_COLORS[T], fontweight="bold")
+    ax.scatter([], [], s=10, color=CONTEXT_GRAY, label="SOXX, SMH, NVDA, TQQQ, SQQQ, QQQ, SPY")
+    ax.set_xscale("log")
+    ax.set_xlabel("Relative tick = $0.01 / mean price (bps, log)")
+    ax.set_ylabel("% of RTH 1-min bars with zero close-to-close change")
+    ax.set_title("Tick constraint vs price level: one point per ticker-month, Jan-2022 to Sep-2026\n(1-min bars, unadjusted, half-days excluded)", fontsize=10)
+    ax.legend(fontsize=8, frameon=False)
+    style_ax(ax)
+    fig.tight_layout(); fig.savefig(OUT / "tick_constraint_scatter.png", dpi=110); plt.close(fig)
     pd.DataFrame(vol_rows).to_csv(OUT / "minbar_vol_by_bucket.csv", index=False)
     prof = pd.concat(prof_rows)
     prof.to_csv(OUT / "volume_profile_minute.csv", index=False)

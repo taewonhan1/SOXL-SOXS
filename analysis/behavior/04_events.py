@@ -83,6 +83,22 @@ def earnings(sess: pd.DataFrame) -> pd.DataFrame:
         after = [(x - dd).days for x in acc if (x - dd).days >= 0]
         off.append(min(after) if after else np.nan)
     ev["nvda_days_to_next_10q_10k_acceptance"] = off
+    # Correction rule (second source): if an NVDA pick has no same-day SEC acceptance but an acceptance
+    # date follows within 35 days AND that acceptance date itself scores >= 4, use the acceptance date.
+    sc_n = np.minimum(ra["NVDA"], rb["NVDA"])
+    ev["corrected_from"] = ""
+    for i in ev.index[(ev.ticker == "NVDA")]:
+        o = ev.at[i, "nvda_days_to_next_10q_10k_acceptance"]
+        if np.isfinite(o) and 0 < o <= 35:
+            cand = (pd.Timestamp(ev.at[i, "report_date"]) + pd.Timedelta(days=int(o))).strftime("%Y-%m-%d")
+            if cand in sc_n.index and sc_n[cand] >= 4:
+                j = days.index(cand)
+                ev.at[i, "corrected_from"] = ev.at[i, "report_date"]
+                ev.at[i, "report_date"] = cand
+                ev.at[i, "weekday"] = pd.Timestamp(cand).day_name()
+                ev.at[i, "score"] = float(sc_n[cand])
+                ev.at[i, "catalyst_day"] = days[j + 1] if j + 1 < len(days) else None
+                ev.at[i, "nvda_days_to_next_10q_10k_acceptance"] = 0
     return ev
 
 

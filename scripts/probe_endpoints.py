@@ -26,6 +26,11 @@ from soxlab import api, config  # noqa: E402
 END = config.HISTORY_END
 RAW = config.REF_DIR / "probe_raw"
 ROWS: list[dict] = []
+# Options / indices / futures entitlements on this key are rate-limited per minute (HTTP 429
+# "exceeded the maximum requests per minute"); pace those families to <= ~5 calls/minute.
+PACED = {"options", "indices", "futures"}
+PACE_SECONDS = 13.0
+_last_paced = [0.0]
 
 
 def _ts_to_date(v) -> str | None:
@@ -67,7 +72,12 @@ def _n(js):
 
 def call(name: str, family: str, path: str, params: dict | None = None, ticker: str = "",
          time_key: str | None = None, note: str = "", save: bool = True):
-    resp = api.get(path, params or {}, raise_for_status=False, retries=3)
+    if family in PACED:
+        wait = PACE_SECONDS - (time.time() - _last_paced[0])
+        if wait > 0:
+            time.sleep(wait)
+        _last_paced[0] = time.time()
+    resp = api.get(path, params or {}, raise_for_status=False, retries=7)
     js = resp.json() if isinstance(resp.json(), dict) else {"_raw": resp.json()}
     first = _first(js)
     when = None
@@ -102,9 +112,10 @@ def probe_stock(T: str) -> None:
     for span in ("second", "minute", "hour", "day"):
         for adj in ("true", "false") if span == "minute" else ("true",):
             nm = f"aggs_{span}" + ("" if adj == "true" else "_unadj")
+            lim = 50_000 if span == "hour" else 1  # 'limit' counts BASE aggregates (minutes) for hour bars
             earliest_latest(nm, "aggregates", f"/v2/aggs/ticker/{T}/range/1/{span}/2000-01-01/{END}",
-                            {"adjusted": adj, "limit": 1}, T, "t", {"sort": "asc"}, {"sort": "desc"},
-                            "t = bar start, UTC ms")
+                            {"adjusted": adj, "limit": lim}, T, "t", {"sort": "asc"}, {"sort": "desc"},
+                            "t = bar start, UTC ms" + ("; limit=50000 base aggs" if span == "hour" else ""))
     call("aggs_prev", "aggregates", f"/v2/aggs/ticker/{T}/prev", {}, T, "t")
     call("open_close", "aggregates", f"/v1/open-close/{T}/{END}", {}, T, None,
          "daily open/close incl. preMarket/afterHours fields")
@@ -148,10 +159,11 @@ def probe_stock(T: str) -> None:
     call("ticker_events", "reference", f"/vX/reference/tickers/{T}/events", {}, T, None)
     call("related_companies", "reference", f"/v1/related-companies/{T}", {}, T, None)
     earliest_latest("short_interest", "reference", "/stocks/v1/short-interest",
-                    {"ticker": T, "limit": 1, "sort": "settlement_date"}, T, "settlement_date",
-                    {"order": "asc"}, {"order": "desc"})
+                    {"ticker": T, "limit": 1}, T, "settlement_date",
+                    {"sort": "settlement_date.asc"}, {"sort": "settlement_date.desc"}, "sort=field.asc|desc syntax")
     earliest_latest("short_volume", "reference", "/stocks/v1/short-volume",
-                    {"ticker": T, "limit": 1, "sort": "date"}, T, "date", {"order": "asc"}, {"order": "desc"})
+                    {"ticker": T, "limit": 1}, T, "date", {"sort": "date.asc"}, {"sort": "date.desc"},
+                    "sort=field.asc|desc syntax")
     call("financials_vX", "reference", "/vX/reference/financials", {"ticker": T, "limit": 1}, T, None)
     # news
     earliest_latest("news", "news", "/v2/reference/news", {"ticker": T, "limit": 1, "sort": "published_utc"}, T,
@@ -199,6 +211,16 @@ def probe_options(T: str) -> None:
                         "sip_timestamp", {"order": "asc", "timestamp.gte": "2000-01-01"}, {"order": "desc"})
         earliest_latest("opt_quotes", "options", f"/v3/quotes/{pick}", {"limit": 1, "sort": "timestamp"}, pick,
                         "sip_timestamp", {"order": "asc", "timestamp.gte": "2000-01-01"}, {"order": "desc"})
+    # history depth: long-dated contracts listed years earlier -> first bar shows the plan's history start
+    for exp in ("2025-01-17", "2026-01-16"):
+        js_l, _ = call(f"opt_contracts_exp_{exp}", "options", "/v3/reference/options/contracts",
+                       {"underlying_ticker": T, "expiration_date": exp, "expired": "true", "contract_type": "call",
+                        "limit": 250}, T, "expiration_date")
+        cl = js_l.get("results") or []
+        if cl:
+            mid = cl[len(cl) // 2]["ticker"]
+            call(f"opt_aggs_day_leaps_{exp}", "options", f"/v2/aggs/ticker/{mid}/range/1/day/2000-01-01/{END}",
+                 {"limit": 1, "sort": "asc"}, mid, "t", "first daily bar of a long-dated contract")
     # oldest expired contract: does history exist for it?
     olds = js_e.get("results") or []
     if olds:
@@ -229,9 +251,13 @@ def probe_futures() -> None:
     for pc in ("NQ", "ES"):
         call("fut_products", "futures", "/futures/v1/products", {"product_code": pc, "limit": 5}, pc, None)
         js, row = call("fut_contracts", "futures", "/futures/v1/contracts",
-                       {"product_code": pc, "active": "true", "limit": 20}, pc, None)
-        tks = [r.get("ticker") for r in (js.get("results") or []) if r.get("ticker")]
-        row["note"] = "active contracts: " + ",".join(tks[:12])
+                       {"product_code": pc, "date": END, "limit": 100}, pc, None)
+        res = [r for r in (js.get("results") or []) if r.get("ticker") and "-" not in r["ticker"]
+               and r.get("last_trade_date", "") >= END]
+        res.sort(key=lambda r: r["last_trade_date"])
+        tks = [r["ticker"] for r in res]
+        row["note"] = "outright contracts as of END (front first): " + ",".join(tks[:8]) + \
+            "; contracts endpoint is point-in-time (one row per as-of date)"
         call("fut_schedules", "futures", "/futures/v1/schedules", {"product_code": pc, "limit": 1}, pc, None)
         call("fut_market_status", "futures", "/futures/v1/market-status", {"product_code": pc, "limit": 1}, pc,
              None)
@@ -239,6 +265,10 @@ def probe_futures() -> None:
         tk = tks[0] if tks else f"{pc}Z6"
         earliest_latest("fut_aggs_1min", "futures", f"/futures/v1/aggs/{tk}", {"resolution": "1min", "limit": 1},
                         tk, "window_start", {"sort": "window_start.asc"}, {"sort": "window_start.desc"})
+        for old in (f"{pc}Z5", f"{pc}Z4", f"{pc}Z3"):
+            call("fut_aggs_1day_history", "futures", f"/futures/v1/aggs/{old}",
+                 {"resolution": "1session", "limit": 1, "sort": "window_start.asc"}, old, "window_start",
+                 "history depth check on an expired contract")
         call("fut_trades", "futures", f"/futures/v1/trades/{tk}", {"limit": 1}, tk, "timestamp")
         call("fut_quotes", "futures", f"/futures/v1/quotes/{tk}", {"limit": 1}, tk, "timestamp")
 

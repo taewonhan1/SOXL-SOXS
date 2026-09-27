@@ -21,6 +21,7 @@ date,type,method
 2022-06-15,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2022-07-01,MU_earnings_next_day,detected: after-hours volume spike on report day
 2022-07-13,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2022-07-19,AVGO_earnings_next_day,detected: after-hours volume spike on report day
 2022-07-27,FOMC_high_conf,"detected, score>=4"
 2022-07-27,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2022-08-03,AMD_earnings_next_day,detected: after-hours volume spike on report day
@@ -35,14 +36,17 @@ date,type,method
 2022-11-02,FOMC_high_conf,"detected, score>=4"
 2022-11-02,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2022-11-10,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2022-11-17,NVDA_earnings_next_day,detected: after-hours volume spike on report day
 2022-12-13,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2022-12-14,FOMC_high_conf,"detected, score>=4"
 2022-12-14,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2022-12-22,MU_earnings_next_day,detected: after-hours volume spike on report day
 2023-01-12,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2023-02-01,AMD_earnings_next_day,detected: after-hours volume spike on report day
 2023-02-01,FOMC_high_conf,"detected, score>=4"
 2023-02-01,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2023-02-14,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2023-02-23,NVDA_earnings_next_day,detected: after-hours volume spike on report day
 2023-03-14,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2023-03-20,AVGO_earnings_next_day,detected: after-hours volume spike on report day
 2023-03-22,FOMC_high_conf,"detected, score>=4"
@@ -53,6 +57,7 @@ date,type,method
 2023-05-03,FOMC_high_conf,"detected, score>=4"
 2023-05-03,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2023-05-10,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2023-05-25,NVDA_earnings_next_day,detected: after-hours volume spike on report day
 2023-06-02,AVGO_earnings_next_day,detected: after-hours volume spike on report day
 2023-06-13,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2023-06-14,FOMC_high_conf,"detected, score>=4"
@@ -63,6 +68,7 @@ date,type,method
 2023-07-26,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2023-08-02,AMD_earnings_next_day,detected: after-hours volume spike on report day
 2023-08-11,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2023-08-24,NVDA_earnings_next_day,detected: after-hours volume spike on report day
 2023-09-01,AVGO_earnings_next_day,detected: after-hours volume spike on report day
 2023-09-13,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2023-09-20,FOMC_high_conf,"detected, score>=4"
@@ -74,15 +80,17 @@ date,type,method
 2023-11-01,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2023-11-14,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2023-11-22,NVDA_earnings_next_day,detected: after-hours volume spike on report day
-2023-11-28,AVGO_earnings_next_day,detected: after-hours volume spike on report day
+2023-12-08,AVGO_earnings_next_day,detected: after-hours volume spike on report day
 2023-12-12,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2023-12-13,FOMC_high_conf,"detected, score>=4"
 2023-12-13,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2023-12-21,MU_earnings_next_day,detected: after-hours volume spike on report day
 2024-01-11,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2024-01-31,AMD_earnings_next_day,detected: after-hours volume spike on report day
 2024-01-31,FOMC_high_conf,"detected, score>=4"
 2024-01-31,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2024-02-13,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2024-02-22,NVDA_earnings_next_day,detected: after-hours volume spike on report day
 2024-03-08,AVGO_earnings_next_day,detected: after-hours volume spike on report day
 2024-03-12,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2024-03-20,FOMC_high_conf,"detected, score>=4"
@@ -93,12 +101,15 @@ date,type,method
 2024-05-01,FOMC_high_conf,"detected, score>=4"
 2024-05-01,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2024-05-15,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2024-05-23,NVDA_earnings_next_day,detected: after-hours volume spike on report day
 2024-06-12,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2024-06-12,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2024-06-13,AVGO_earnings_next_day,detected: after-hours volume spike on report day
 2024-06-27,MU_earnings_next_day,detected: after-hours volume spike on report day
 2024-07-11,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2024-07-31,AMD_earnings_next_day,detected: after-hours volume spike on report day
 2024-08-14,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2024-08-29,NVDA_earnings_next_day,detected: after-hours volume spike on report day
 2024-09-06,AVGO_earnings_next_day,detected: after-hours volume spike on report day
 2024-09-11,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2024-09-18,FOMC_high_conf,"detected, score>=4"
@@ -118,6 +129,7 @@ date,type,method
 2025-01-29,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2025-02-05,AMD_earnings_next_day,detected: after-hours volume spike on report day
 2025-02-12,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2025-02-27,NVDA_earnings_next_day,detected: after-hours volume spike on report day
 2025-03-07,AVGO_earnings_next_day,detected: after-hours volume spike on report day
 2025-03-12,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2025-03-19,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
@@ -125,6 +137,7 @@ date,type,method
 2025-05-07,AMD_earnings_next_day,detected: after-hours volume spike on report day
 2025-05-07,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2025-05-13,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
+2025-05-29,NVDA_earnings_next_day,detected: after-hours volume spike on report day
 2025-06-06,AVGO_earnings_next_day,detected: after-hours volume spike on report day
 2025-06-11,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2025-06-11,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
@@ -140,9 +153,10 @@ date,type,method
 2025-09-17,FOMC_high_conf,"detected, score>=4"
 2025-09-17,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2025-09-24,MU_earnings_next_day,detected: after-hours volume spike on report day
-2025-10-09,AMD_earnings_next_day,detected: after-hours volume spike on report day
 2025-10-29,FOMC_high_conf,"detected, score>=4"
 2025-10-29,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
+2025-11-05,AMD_earnings_next_day,detected: after-hours volume spike on report day
+2025-11-20,NVDA_earnings_next_day,detected: after-hours volume spike on report day
 2025-12-10,FOMC_high_conf,"detected, score>=4"
 2025-12-10,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2025-12-12,AVGO_earnings_next_day,detected: after-hours volume spike on report day
@@ -156,18 +170,19 @@ date,type,method
 2026-03-19,MU_earnings_next_day,detected: after-hours volume spike on report day
 2026-04-01,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2026-04-10,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
-2026-04-24,AMD_earnings_next_day,detected: after-hours volume spike on report day
+2026-05-06,AMD_earnings_next_day,detected: after-hours volume spike on report day
 2026-05-13,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2026-05-21,NVDA_earnings_next_day,detected: after-hours volume spike on report day
 2026-06-04,AVGO_earnings_next_day,detected: after-hours volume spike on report day
 2026-06-10,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2026-06-17,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
+2026-06-25,MU_earnings_next_day,detected: after-hours volume spike on report day
 2026-07-14,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2026-07-29,FOMC_high_conf,"detected, score>=4"
 2026-07-29,FOMC,detected: QQQ 14:00 + 14:30 ET volume bursts
 2026-08-05,AMD_earnings_next_day,detected: after-hours volume spike on report day
 2026-08-12,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
-2026-08-21,NVDA_earnings_next_day,detected: after-hours volume spike on report day
+2026-08-27,NVDA_earnings_next_day,detected: after-hours volume spike on report day
 2026-09-03,AVGO_earnings_next_day,detected: after-hours volume spike on report day
 2026-09-11,CPI_window_0830,"detected: QQQ 08:30 ET pre-market volume spike, day 10-15, max 1/month"
 2026-09-16,FOMC_high_conf,"detected, score>=4"

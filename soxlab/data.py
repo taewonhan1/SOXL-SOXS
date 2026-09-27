@@ -306,19 +306,13 @@ def build_panel(ticker: str, calendar: pd.DataFrame, start: str | None = None, e
     j = np.arange(config.N_RTH)[None, :]
     inside = j < n_min[:, None]
     present &= inside
-    # forward-fill missing minutes inside the session with previous close (v = 0)
-    c = arrays["c"].copy()
-    cu = c_unadj.copy()
-    for arr in (c, cu):
-        # first minute missing -> backfill with first available open later in the day
-        df_ = pd.DataFrame(arr)
-        arr[:] = df_.ffill(axis=1).to_numpy()
-    first_open = pd.DataFrame(arrays["o"]).bfill(axis=1).to_numpy()[:, 0]
-    first_open_u = pd.DataFrame(o_unadj).bfill(axis=1).to_numpy()[:, 0]
-    c = np.where(np.isnan(c), first_open[:, None], c)
-    cu = np.where(np.isnan(cu), first_open_u[:, None], cu)
-    prev_c = np.concatenate([np.where(np.isnan(first_open), np.nan, first_open)[:, None], c[:, :-1]], axis=1)
-    prev_cu = np.concatenate([first_open_u[:, None], cu[:, :-1]], axis=1)
+    # Causal forward-fill of missing minutes with the previous close (v = 0). If the session's
+    # first bar(s) are missing they stay NaN until the first real bar (no back-filling = no look-ahead).
+    c = pd.DataFrame(arrays["c"]).ffill(axis=1).to_numpy()
+    cu = pd.DataFrame(c_unadj).ffill(axis=1).to_numpy()
+    nan_col = np.full((len(dates), 1), np.nan)
+    prev_c = np.concatenate([nan_col, c[:, :-1]], axis=1)
+    prev_cu = np.concatenate([nan_col, cu[:, :-1]], axis=1)
     for k in ("o", "h", "l"):
         arrays[k] = np.where(present, arrays[k], prev_c)
     arrays["c"] = np.where(present, arrays["c"], prev_c)

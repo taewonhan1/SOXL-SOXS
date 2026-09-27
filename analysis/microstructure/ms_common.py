@@ -217,8 +217,12 @@ def has_cond(cond_packed: np.ndarray, code: int) -> np.ndarray:
 # ---------------------------------------------------------------- sample design
 # Stress days were chosen from the data (script 01 bars): largest |close-to-close| moves / daily ranges of
 # SOXL and NVDA between 2025-03-25 and 2026-09-25, plus the April-2025 days named in the brief.
-STRESS_DAYS = ["2025-04-03", "2025-04-04", "2025-04-07", "2025-04-09",
-               "2026-02-06", "2026-06-05", "2026-06-09", "2026-08-27"]
+# 2025-11-20 and 2026-08-27 are the first sessions after NVDA quarterly filings accepted 2025-11-19 21:36 UTC and
+# 2026-08-26 20:36 UTC (/vX/reference/financials acceptance_datetime).
+_STRESS_ORIG = ["2025-04-03", "2025-04-04", "2025-04-07", "2025-04-09",
+                "2026-02-06", "2026-06-05", "2026-06-09", "2026-08-27"]
+_STRESS_EXTRA = ["2025-11-20"]  # added after the first design; not used for the normal-day exclusion (keeps normal days fixed)
+STRESS_DAYS = sorted(_STRESS_ORIG + _STRESS_EXTRA)
 RECENT_DAYS = ["2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25"]
 PERIODS = [("2022-01-01", "2022-12-31", 5), ("2023-01-01", "2023-12-31", 5),
            ("2024-01-01", "2024-12-31", 5), ("2025-01-01", "2025-09-25", 4),
@@ -240,7 +244,7 @@ def trading_days_and_halfdays():
 def sample_days() -> pd.DataFrame:
     """Deterministic, evenly spaced (by trading-day index) normal days per period + recent + stress."""
     days, half = trading_days_and_halfdays()
-    excl = set(half) | set(STRESS_DAYS) | set(RECENT_DAYS)
+    excl = set(half) | set(_STRESS_ORIG) | set(RECENT_DAYS)
     rows = []
     for lo, hi, k in PERIODS:
         cand = [x for x in days if lo <= x <= hi and x not in excl]

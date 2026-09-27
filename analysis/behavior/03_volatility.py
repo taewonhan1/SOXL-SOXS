@@ -8,7 +8,7 @@ import pandas as pd
 from scipy import stats
 
 import plotstyle as ps
-from common import MAIN, OUT, PERIODS, Tk, block_sum, daily_metrics, q, save_csv
+from common import MAIN, OUT, PANEL, PERIODS, Tk, block_sum, daily_metrics, q, save_csv
 
 HORIZONS = [1, 2, 5, 15, 30, 60]
 
@@ -20,7 +20,7 @@ def main():
     for t in MAIN:
         T = Tk(t)
         D = daily_metrics(T)
-        D.to_parquet(OUT.parent.parent.parent / "data" / "behavior" / "panel" / f"{t}_dm.parquet")
+        D.to_parquet(PANEL / f"{t}_dm.parquet")
         for per in PERIODS:
             m = (D.period == per) & D.full
             d = D[m]

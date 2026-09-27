@@ -1,0 +1,65 @@
+ticker,period,stat,slope,t_NW,n
+SOXX,secondary,last30 ~ own prevclose_to_15:30,-0.000140643,-0.0159304,685
+SOXX,secondary,15:50_to_close ~ own prevclose_to_15:30,0.0129771,1.82652,685
+SOXX,secondary,auction_jump ~ own prevclose_to_15:59,-0.00965312,-8.97391,685
+SOXX,secondary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0254735,-3.37838,685
+SMH,secondary,last30 ~ own prevclose_to_15:30,0.00735385,0.895582,685
+SMH,secondary,15:50_to_close ~ own prevclose_to_15:30,0.0195357,2.97512,685
+SMH,secondary,auction_jump ~ own prevclose_to_15:59,-0.000901815,-1.11982,685
+SMH,secondary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0266817,-4.96067,685
+NVDA,secondary,last30 ~ own prevclose_to_15:30,0.00981972,1.24909,685
+NVDA,secondary,15:50_to_close ~ own prevclose_to_15:30,0.0167519,2.95326,685
+NVDA,secondary,auction_jump ~ own prevclose_to_15:59,-0.00071596,-1.40408,685
+NVDA,secondary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0276539,-4.67428,685
+SOXL,secondary,last30 ~ own prevclose_to_15:30,-0.00868043,-0.981312,685
+SOXL,secondary,15:50_to_close ~ own prevclose_to_15:30,0.00421079,0.582921,685
+SOXL,secondary,auction_jump ~ own prevclose_to_15:59,-0.0163407,-15.3661,685
+SOXL,secondary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0679589,-7.82735,685
+SOXS,secondary,last30 ~ own prevclose_to_15:30,0.00168086,0.189027,685
+SOXS,secondary,15:50_to_close ~ own prevclose_to_15:30,0.0150301,2.35648,685
+SOXS,secondary,auction_jump ~ own prevclose_to_15:59,-0.00773583,-8.11748,685
+SOXS,secondary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0269653,-4.07089,685
+QQQ,secondary,last30 ~ own prevclose_to_15:30,0.00996083,0.976843,685
+QQQ,secondary,15:50_to_close ~ own prevclose_to_15:30,0.00240844,0.325608,685
+QQQ,secondary,auction_jump ~ own prevclose_to_15:59,-0.00340697,-3.92017,685
+QQQ,secondary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0443968,-7.01678,685
+TQQQ,secondary,last30 ~ own prevclose_to_15:30,0.00245588,0.233609,685
+TQQQ,secondary,15:50_to_close ~ own prevclose_to_15:30,-0.00601059,-0.755681,685
+TQQQ,secondary,auction_jump ~ own prevclose_to_15:59,-0.00981279,-11.2151,685
+TQQQ,secondary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0330984,-5.69226,685
+SQQQ,secondary,last30 ~ own prevclose_to_15:30,0.00317614,0.304097,685
+SQQQ,secondary,15:50_to_close ~ own prevclose_to_15:30,-0.00236035,-0.326414,685
+SQQQ,secondary,auction_jump ~ own prevclose_to_15:59,-0.00943409,-11.8092,685
+SQQQ,secondary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0215227,-3.18721,685
+SOXX,primary,last30 ~ own prevclose_to_15:30,-0.0209488,-1.43238,493
+SOXX,primary,15:50_to_close ~ own prevclose_to_15:30,-0.0077696,-0.72962,493
+SOXX,primary,auction_jump ~ own prevclose_to_15:59,-0.00575969,-4.40306,493
+SOXX,primary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0252018,-3.2136,493
+SMH,primary,last30 ~ own prevclose_to_15:30,-0.0168444,-1.17458,493
+SMH,primary,15:50_to_close ~ own prevclose_to_15:30,-0.00571913,-0.604009,493
+SMH,primary,auction_jump ~ own prevclose_to_15:59,-0.00434324,-3.6821,493
+SMH,primary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0194841,-2.39103,493
+NVDA,primary,last30 ~ own prevclose_to_15:30,-0.00388122,-0.258132,493
+NVDA,primary,15:50_to_close ~ own prevclose_to_15:30,-0.000145596,-0.0166704,493
+NVDA,primary,auction_jump ~ own prevclose_to_15:59,0.00048467,0.395014,493
+NVDA,primary,auction_jump ~ 15:50_to_15:59_last_trade,-0.039853,-3.47199,493
+SOXL,primary,last30 ~ own prevclose_to_15:30,-0.029953,-1.87431,493
+SOXL,primary,15:50_to_close ~ own prevclose_to_15:30,-0.0130038,-1.05717,493
+SOXL,primary,auction_jump ~ own prevclose_to_15:59,-0.0061254,-6.92711,493
+SOXL,primary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0263292,-4.76255,493
+SOXS,primary,last30 ~ own prevclose_to_15:30,-0.00765209,-0.433882,493
+SOXS,primary,15:50_to_close ~ own prevclose_to_15:30,-0.0064557,-0.895518,493
+SOXS,primary,auction_jump ~ own prevclose_to_15:59,-0.00812471,-7.49379,493
+SOXS,primary,auction_jump ~ 15:50_to_15:59_last_trade,-0.015772,-1.68474,493
+QQQ,primary,last30 ~ own prevclose_to_15:30,0.00365629,0.207542,493
+QQQ,primary,15:50_to_close ~ own prevclose_to_15:30,-0.00630044,-0.612437,493
+QQQ,primary,auction_jump ~ own prevclose_to_15:59,0.00578194,2.98926,493
+QQQ,primary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0142976,-1.80391,493
+TQQQ,primary,last30 ~ own prevclose_to_15:30,-0.00719477,-0.406769,493
+TQQQ,primary,15:50_to_close ~ own prevclose_to_15:30,-0.0159377,-1.37303,493
+TQQQ,primary,auction_jump ~ own prevclose_to_15:59,-0.00321906,-5.94158,493
+TQQQ,primary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0129908,-2.89208,493
+SQQQ,primary,last30 ~ own prevclose_to_15:30,0.00493371,0.284521,493
+SQQQ,primary,15:50_to_close ~ own prevclose_to_15:30,-0.0122495,-1.56499,493
+SQQQ,primary,auction_jump ~ own prevclose_to_15:59,-0.00149157,-1.36004,493
+SQQQ,primary,auction_jump ~ 15:50_to_15:59_last_trade,-0.0028032,-0.661898,493

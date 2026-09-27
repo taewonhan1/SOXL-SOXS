@@ -1,0 +1,5 @@
+ticker,period,slope_R_since_close_1530_vs_SOXX,corr,n_days,median_abs_dev_from_L*R_bps,p90_abs_dev_from_L*R_bps
+SOXL,secondary,2.99244,0.999449,685,13.6193,35.78
+SOXS,secondary,-2.99749,-0.999452,685,16.9855,37.2954
+SOXL,primary,2.97518,0.999541,493,11.08,32.4811
+SOXS,primary,-2.99354,-0.99958,493,16.3575,42.2839
