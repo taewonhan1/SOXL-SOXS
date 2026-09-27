@@ -30,9 +30,15 @@ def _hhmm_to_min(s) -> int:
     return int(float(s))
 
 
-def load_halfspread_table(prefer_micro: bool = True) -> tuple[pd.DataFrame, str]:
-    """Return (table, source_path). Raises FileNotFoundError when neither source exists."""
-    cands = [config.MICRO_COST_FILE, FALLBACK_FILE] if prefer_micro else [FALLBACK_FILE, config.MICRO_COST_FILE]
+def load_halfspread_table(prefer_micro: bool = True, path: str | Path | None = None) -> tuple[pd.DataFrame, str]:
+    """Return (table, source_path). Raises FileNotFoundError when neither source exists.
+
+    ``path`` pins one specific table (e.g. the exact file a published run used) and disables the fallbacks.
+    """
+    if path is not None:
+        cands = [Path(path)]
+    else:
+        cands = [config.MICRO_COST_FILE, FALLBACK_FILE] if prefer_micro else [FALLBACK_FILE, config.MICRO_COST_FILE]
     for pth in cands:
         if Path(pth).exists():
             t = pd.read_csv(pth)
@@ -61,10 +67,12 @@ class CostModel:
     fixed_half_spread_bps: float | None = None      # override (tests / sensitivity)
 
     @classmethod
-    def default(cls, **kw) -> "CostModel":
+    def default(cls, cost_table: str | Path | None = None, **kw) -> "CostModel":
         try:
-            t, src = load_halfspread_table()
+            t, src = load_halfspread_table(path=cost_table)
         except FileNotFoundError:
+            if cost_table is not None:
+                raise
             t, src = None, ""
         return cls(spread_table=t, spread_source=src, **kw)
 

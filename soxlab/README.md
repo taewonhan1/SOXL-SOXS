@@ -136,6 +136,10 @@ The model charges **half-spread per side + per-share commission per side + SEC S
   missing, the fallback is `analysis/backtests/output/halfspread_estimate_nbbo_sample.csv` from `scripts/estimate_spreads.py`:
   10 days × 5 five-minute `/v3/quotes` windows × SOXL/SOXS, time-weighted, with locked/crossed quotes dropped. A missing
   year falls back to the nearest year, and a missing bucket to the nearest bucket.
+  *Provenance of the published battery:* it ran against an earlier draft of that table (sha256 `96aafb46…`), saved
+  verbatim as `analysis/backtests/output/cost_table_used_by_battery.csv`. Among SOXL/SOXS rows it differs from the
+  final table only in SOXL 2026 10:00–10:30 (median spread 5¢ vs 6¢). Reproduce the published numbers with
+  `python scripts/run_battery.py --cost-table analysis/backtests/output/cost_table_used_by_battery.csv`.
 * **Commission.** $0.0035/share/side. ASSUMPTION: a typical per-share broker tier. `avg_net_bps_zero_commission` in
   the battery output shows the zero-commission case.
 * **SEC Section 31 fee** (USD per USD 1M of sales): 5.10 through 2022-05-13; 22.90 from 2022-05-14; 8.00 from

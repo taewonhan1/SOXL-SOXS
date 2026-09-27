@@ -583,6 +583,12 @@ read against the multiple-testing tables.
   this account, but was only sampled for spreads.
 - The effect of the 15:55 flat rule, which excludes the closing auction and last 5 minutes, was not compared with a
   hold-to-close variant.
+- Cost-table provenance (added by the coordinator after this analyst's session ended): the battery used an earlier
+  draft of `analysis/microstructure/output/cost_model_halfspread.csv` (sha256 96aafb46…, saved verbatim as
+  `analysis/backtests/output/cost_table_used_by_battery.csv`). Among SOXL/SOXS rows the only difference from the final
+  table is SOXL 2026 10:00–10:30 (median spread 5¢ → 6¢, ≈ +0.33 bp per side at ~$150). That bucket touches only
+  2026 SOXL trades, so reported net figures would move by well under 1 bp per affected trade and no conclusion
+  changes. `scripts/run_battery.py --cost-table <path>` reproduces the published run exactly.
 
 ## Data and backtest verdict: is there enough to track and backtest?
 

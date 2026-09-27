@@ -416,12 +416,15 @@ def main() -> None:
     ap.add_argument("--stages", default="1,2,3,4,5",
                     help="1 canonical, 2 grid/walk-forward, 3 random baseline, 4 timing diagnostics, 5 tests/xcorr/charts")
     ap.add_argument("--n-random", type=int, default=100)
+    ap.add_argument("--cost-table", default=None,
+                    help="half-spread table to use instead of the default lookup; the published results used "
+                         "analysis/backtests/output/cost_table_used_by_battery.csv")
     args = ap.parse_args()
     stages = {int(x) for x in args.stages.split(",")}
     t0 = time.time()
     OUT.mkdir(parents=True, exist_ok=True)
     ctx = pipeline.load_context()
-    cm = CostModel.default()
+    cm = CostModel.default(cost_table=args.cost_table)
     src = Path(cm.spread_source)
     info_path = OUT / "battery_run_info.json"
     info = json.loads(info_path.read_text()) if info_path.exists() else {}
