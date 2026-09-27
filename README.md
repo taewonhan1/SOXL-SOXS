@@ -4,6 +4,9 @@ Research repository on the intraday behavior of the Direxion Daily Semiconductor
 (SOXL / SOXS). All market data comes from the Massive REST API (formerly Polygon.io,
 `https://api.massive.com`), and every reported number is computed from downloaded data.
 
+**Start here:** [reports/SOXL and SOXS intraday behavior.md](reports/SOXL%20and%20SOXS%20intraday%20behavior.md), the synthesized
+findings on whether SOXL/SOXS intraday behavior suits day trading and what data exists to track and backtest it.
+
 ## Layout
 
 | path | what it holds |
@@ -21,7 +24,7 @@ Research repository on the intraday behavior of the Direxion Daily Semiconductor
 ## Quick start
 
 ```bash
-cd /home/user/SOXL-SOXS
+cd SOXL-SOXS                                      # repo root
 pip install pytest
 
 # 1. data (idempotent; ~5 min for 8 tickers x 2019-01 -> 2026-09, adjusted + unadjusted 1-min bars)
