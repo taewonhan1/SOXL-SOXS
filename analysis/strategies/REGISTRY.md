@@ -364,6 +364,127 @@ There are no survivors, so this also runs on the four near-misses (S3-01, S3-13,
   - The fill-model upgrade would be second-order, and it only matters for a rule that passes.
 - These results cannot make a rule pass. They are counted in the BH family.
 
+## Studies 10–12: 1-minute momentum scalps (registered 2026-09-28 before running)
+
+Requested setups: Hitchhiker-like (Study 10), Bone Zone-like (Study 11) and bull/bear-flag-like (Study 12)
+momentum scalps on the 1-minute chart. The rules are SMB-inspired, not copies of any published or in-house rule
+set. They were fixed before any of their returns were computed. Before registering, only the number of setups per
+period was checked, to make sure each rule trades often enough to be tested.
+
+**Common to Studies 10–12**
+- **Signal chart:** SOXL 1-minute bars. Tick = $0.01 unadjusted.
+- **Execution:** switch mode, as in §0. Bearish signals go to SOXS when its prior close is ≥ $10; otherwise they are skipped.
+- **Stop-order entries** ("stop" variants):
+  - Fill inside the trigger bar at the order level, or at that bar's open if it opens beyond the level.
+  - For SOXS, the fill is mirrored from the SOXL level, anchored at the bar open and clipped to the SOXS bar's low–high.
+  - On the entry bar, a touched protective stop counts as hit (after the fill) and no target can fill.
+- **Close-confirm entries** ("close" variants): enter at the open of the bar after the trigger bar closes.
+- **σ_tod:** RMS of 1-minute returns in the same half-hour bucket over the prior 20 sessions (≥ 15 required).
+- **EMAs:** 1-minute closes, reset each session.
+- **Exit schemes.** Every scheme keeps the initial stop and is flat by the §0 flat bar (15:55).
+  - **X2R:** target entry ± 2R; time exit at the open of e+30.
+  - **XT:** target = retest of the impulse extreme if it is ≥ 1R away, else 2R; time exit e+30.
+  - **XS:** target 1R; time exit e+10.
+  - **XM:** target = entry ± pole height (measured move); time exit e+60.
+  - **XSO (scale-out):** two equal legs.
+    - Leg A: target 1R, time exit e+30.
+    - Leg B: no target; exits at the next open after a 1-minute close through the trail EMA; time exit e+60.
+    - The trade's result is the average of the two legs.
+- **Positions:** one at a time. A scale-out position is open until both legs are out. At most 3 signals a day (Studies 11–12). Study 10 takes only the first setup of the day.
+- **Robustness (criterion 4):**
+  - Delay = one bar later: a stop entry becomes the next bar's open, and a close entry becomes the open two bars after the trigger.
+  - The neighbour is listed per study.
+- **Cross-checks:** SOXX, SMH, NVDA, QQQ and TQQQ, run L/S on their own charts.
+- **Case Q:** computed for the validation trades of every variant. A stop entry fills at the level + the prevailing half-spread, with the NBBO taken at the entry bar's open.
+- **Case S (stress, reported, not a pass criterion):** case B plus 1 cent of extra slippage on every stop-order fill, meaning stop entries and stop-loss exits.
+- **Status:** confirmatory. Pass criteria 1–5 are as in §0. The BH family is every registered variant: 70 already run + 24 here = 94. The within-family q over the 24 is also reported, as secondary.
+- **Also reported (descriptive):** bull vs bear legs, entry time of day, and setups per day.
+
+### Study 10: Hitchhiker-like opening drive → consolidation → breakout (12 variants)
+- **σ_open:** RMS of 1-minute returns over bars 1..29 (09:31–09:59) in the prior 20 sessions. This is the typical opening-minute move.
+- **Long setup at bar t** (t = 5 .. window end):
+  - Drive: the high of bars 0..t−1 (HOD) is ≥ open × (1 + 3.0 × σ_open).
+  - Consolidation: the bars after the HOD bar up to t−1. There are 3–15 of them, and their lowest low gives back ≤ 40% of (HOD − open).
+  - Trigger, "stop": buy stop at HOD + 1 tick, filled in bar t.
+  - Trigger, "close": bar t closes above the HOD.
+  - Stop: consolidation low − 1 tick.
+- **Short setup:** the mirror, using the low of day.
+- **Selection:** the first setup of the day only. At each bar the long side is checked first.
+- **Trail EMA (XSO leg B):** EMA9.
+
+| ID | Breakout by (window end) | Entry | Exit |
+|---|---|---|---|
+| S10-01 | 09:59 (bar 29) | stop | X2R |
+| S10-02 | 09:59 | stop | XSO |
+| S10-03 | 09:59 | close | X2R |
+| S10-04 | 09:59 | close | XSO |
+| S10-05 | 10:14 (bar 44) | stop | X2R |
+| S10-06 | 10:14 | stop | XSO |
+| S10-07 | 10:14 | close | X2R |
+| S10-08 | 10:14 | close | XSO |
+| S10-09 | 10:29 (bar 59) | stop | X2R |
+| S10-10 | 10:29 | stop | XSO |
+| S10-11 | 10:29 | close | X2R |
+| S10-12 | 10:29 | close | XSO |
+
+**Neighbour:** drive threshold 2.5 × σ_open.
+
+### Study 11: Bone Zone-like pullback into the EMA9/EMA21 band (6 variants)
+- **Long trigger bar t** (t = 30 .. 360, i.e. 10:00–15:30):
+  - Trend: EMA9 > EMA21 at bar t.
+  - Bar t is green and closes ≥ EMA21.
+- **Impulse:**
+  - Peak = the highest high of bars t−11..t−1. The pullback is t−1−peak bars long, and must be 2–10 bars.
+  - Base = the lowest low of the 16 bars ending at the peak. There must be ≥ 3 bars from base to peak.
+  - Gain: peak/base − 1 ≥ 2.5 × σ_tod(peak) × √(bars from base to peak).
+- **Pullback** (bars after the peak up to t−1):
+  - At least one low touches EMA9.
+  - No close is below EMA21.
+  - The lowest low gives back ≤ 50% of the impulse.
+  - Its mean volume per bar is ≤ 0.9 × the impulse's (base to peak).
+- **Selection:** each impulse peak is used once, at its first valid trigger.
+- **Stop:** 1 tick below the lower of the pullback low and bar t's low.
+- **Entry, "close":** open of t+1.
+- **Entry, "stop":** buy stop 1 tick above bar t's high, working for bars t+1..t+3. It is cancelled if the protective stop trades first.
+- **Short setup:** the mirror, with EMA9 < EMA21.
+- **Trail EMA (XSO leg B):** EMA21.
+
+| ID | Entry | Exit |
+|---|---|---|
+| S11-01 | close | XT |
+| S11-02 | close | XS |
+| S11-03 | close | XSO |
+| S11-04 | stop | XT |
+| S11-05 | stop | XS |
+| S11-06 | stop | XSO |
+
+**Neighbour:** impulse threshold 2.0 × σ_tod × √bars.
+
+### Study 12: bull/bear-flag-like continuation (6 variants)
+- **Bull flag, trigger bar t** (t = 10 .. 360, i.e. 09:40–15:30):
+  - Pole top = the highest high of bars t−13..t−1, counting from the open if that is earlier. The flag is the bars after the top up to t−1, and must be 3–12 bars.
+  - Pole: base = the lowest low of the 16 bars ending at the top, counting from the open if earlier. There must be ≥ 3 bars from base to top, and the height (as a return) must be ≥ 2.5 × σ_tod(top) × √bars.
+  - Flag: its lowest low retraces ≤ 50% of the pole, and its mean volume per bar is ≤ 0.9 × the pole's.
+  - Resistance line: anchored at the pole top, through the flag high that keeps every flag high on or below it. Its slope is ≤ 0.
+  - Trigger level = max(line at t, bar t−1's high).
+- **Entry, "stop":** buy stop 1 tick above the trigger level, filled in bar t.
+- **Entry, "close":** bar t closes above the trigger level; enter at the open of t+1.
+- **Stop:** 1 tick below the flag low. For close entries, also below bar t's low.
+- **Bear flag:** the mirror, with a support line through the lows.
+- **Selection:** each pole top is used once.
+- **Trail EMA (XSO leg B):** EMA9.
+
+| ID | Entry | Exit |
+|---|---|---|
+| S12-01 | stop | XM |
+| S12-02 | stop | X2R |
+| S12-03 | stop | XSO |
+| S12-04 | close | XM |
+| S12-05 | close | X2R |
+| S12-06 | close | XSO |
+
+**Neighbour:** pole threshold 2.0 × σ_tod × √bars.
+
 ## Study 9: monitors and paper log
 
 No statistical test. See the plan.

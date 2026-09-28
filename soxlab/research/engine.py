@@ -38,11 +38,11 @@ from .. import api, config
 from .common import (PERIOD_ORDER, PERIODS, RESEARCH_DATA, SOXS_MIN_PRICE, Context, bar_time_ns,
                      cluster_t, max_drawdown_bps, period_of, quarter_share_positive)
 
-INTENT_DEFAULTS = {"stop": np.nan, "target": np.nan, "tx_kind": "open", "trail_r": np.nan}
+INTENT_DEFAULTS = {"stop": np.nan, "target": np.nan, "tx_kind": "open", "trail_r": np.nan, "entry_px": np.nan}
 
 
 def make_intents(rows: list[dict]) -> pd.DataFrame:
-    cols = ["d", "sig", "e", "s", "stop", "target", "tx", "tx_kind", "trail_r"]
+    cols = ["d", "sig", "e", "s", "stop", "target", "tx", "tx_kind", "trail_r", "entry_px"]
     if not rows:
         return pd.DataFrame(columns=cols)
     df = pd.DataFrame(rows)
@@ -81,7 +81,9 @@ def simulate(td, intents: pd.DataFrame, exit_long: np.ndarray | None = None,
             if e > tx:
                 continue
             last = tx
-        ep = o[d, e]
+        # entry: the bar's open, or a resting stop order filled inside bar e at ``entry_px`` (level entry)
+        lvl_entry = np.isfinite(r.entry_px)
+        ep = float(r.entry_px) if lvl_entry else o[d, e]
         if not np.isfinite(ep) or ep <= 0:
             continue
         hh, ll, oo, cc = h[d, e:last + 1], l[d, e:last + 1], o[d, e:last + 1], c[d, e:last + 1]
@@ -93,6 +95,9 @@ def simulate(td, intents: pd.DataFrame, exit_long: np.ndarray | None = None,
             st = (ll <= stop) if s > 0 else (hh >= stop)
         if np.isfinite(tgt):
             tg = (hh >= tgt) if s > 0 else (ll <= tgt)
+        if lvl_entry and n:
+            # conservative on the entry bar: a touched stop counts (assumed after the fill); no target fills
+            tg[0] = False
         anyh = np.flatnonzero(st | tg)
         k_level = int(anyh[0]) if anyh.size else n
         k_sig = n
@@ -119,7 +124,7 @@ def simulate(td, intents: pd.DataFrame, exit_long: np.ndarray | None = None,
             k = k_level
             xb = e + k
             if st[k]:
-                gap = (oo[k] <= stop) if s > 0 else (oo[k] >= stop)
+                gap = ((oo[k] <= stop) if s > 0 else (oo[k] >= stop)) and not (lvl_entry and k == 0)
                 xp, xk, why = (oo[k], "gap", "stop") if gap else (stop, "level", "stop")
             else:
                 gap = (oo[k] >= tgt) if s > 0 else (oo[k] <= tgt)
@@ -145,10 +150,76 @@ def simulate(td, intents: pd.DataFrame, exit_long: np.ndarray | None = None,
         if not np.isfinite(xp):
             continue
         free[d] = nxt_free
-        recs.append((d, int(r.sig), e, xb, s, float(ep), float(xp), xk, why))
-    tr = pd.DataFrame(recs, columns=["d", "sig", "e", "xb", "s", "ep", "xp", "x_kind", "reason"])
+        recs.append((d, int(r.sig), e, xb, s, float(ep), float(xp), xk, why, "level" if lvl_entry else "open"))
+    tr = pd.DataFrame(recs, columns=["d", "sig", "e", "xb", "s", "ep", "xp", "x_kind", "reason", "e_kind"])
     tr["date"] = td.dates[tr["d"].to_numpy()] if len(tr) else pd.Series(dtype="datetime64[ns]")
     tr["gross_chart_bps"] = tr["s"] * (tr["xp"] / tr["ep"] - 1) * 1e4
+    return tr
+
+
+# --------------------------------------------------------------------------------------
+# paired legs (scale-out exits) and position limits applied after simulation
+# --------------------------------------------------------------------------------------
+LEG_KEY = ["d", "sig", "e", "s"]
+
+
+def _next_free(tr: pd.DataFrame) -> np.ndarray:
+    """First bar a new position may enter after this trade (same rule as ``simulate``'s one-position)."""
+    xb = tr["xb"].to_numpy().astype(int)
+    return np.where(tr["x_kind"].to_numpy() == "open", xb, xb + 1)
+
+
+def filter_positions(legs: list[pd.DataFrame], max_per_day: int | None = None) -> list[pd.DataFrame]:
+    """Legs simulated with ``one_position=False`` from the same intents -> keep a signal only if its entry
+    bar is at or after the bar at which every leg of the previously kept signal is out, and at most
+    ``max_per_day`` signals per day. Returns the legs restricted to the kept signals."""
+    base = legs[0][LEG_KEY].copy()
+    base["nf"] = _next_free(legs[0])
+    for lg in legs[1:]:
+        base = base.merge(lg[LEG_KEY].assign(nf2=_next_free(lg)), on=LEG_KEY, how="inner")
+        base["nf"] = np.maximum(base["nf"], base.pop("nf2"))
+    keep, cur, free, n = [], -1, 0, 0
+    for r in base.sort_values(["d", "e", "sig"]).itertuples(index=False):
+        if r.d != cur:
+            cur, free, n = r.d, 0, 0
+        if r.e < free or (max_per_day is not None and n >= max_per_day):
+            continue
+        keep.append((r.d, r.sig, r.e, r.s))
+        free, n = r.nf, n + 1
+    kk = pd.DataFrame(keep, columns=LEG_KEY)
+    return [lg.merge(kk, on=LEG_KEY, how="inner") for lg in legs]
+
+
+PNL_MEAN_COLS = ("ep", "ep_u", "xp", "xp_u", "gross_bps", "cost_A", "net_A", "cost_B", "net_B", "gross_Q",
+                 "net_Q", "net_S", "q_entry_spread_bps")
+
+
+def merge_legs(legs: list[pd.DataFrame], names=("A", "B")) -> pd.DataFrame:
+    """Equal-size legs of one position -> one trade per signal. P&L columns (and prices) are the leg
+    average, i.e. the result of the whole position; the exit bar is the last leg's exit."""
+    key = ["date", "d", "sig", "e", "s", "inst"]
+    allp = pd.concat([lg.assign(leg=nm) for lg, nm in zip(legs, names)], ignore_index=True)
+    allp = allp[allp.groupby(key)["leg"].transform("count") == len(legs)]      # signals present in every leg
+    agg = {c: "mean" for c in PNL_MEAN_COLS if c in allp}
+    agg.update({"xb": "max", "exit_min": "max", "x_kind": "+".join, "reason": "+".join})
+    if "q_fallback" in allp:
+        agg["q_fallback"] = "max"
+    agg.update({c: "first" for c in allp.columns if c not in agg and c not in key and c != "leg"})
+    out = allp.sort_values("leg").groupby(key, sort=False).agg(agg).reset_index()
+    return out.sort_values(["date", "e"]).reset_index(drop=True)
+
+
+def add_stop_slippage(tr: pd.DataFrame, cents: float = 1.0) -> pd.DataFrame:
+    """Case S (stress): case B plus ``cents`` of extra slippage on every stop-order fill, i.e. level
+    (stop) entries and stop-loss exits filled at the level."""
+    tr = tr.copy()
+    if tr.empty:
+        tr["net_S"] = []
+        return tr
+    slip_in = np.where(tr["e_kind"].to_numpy() == "level", cents / 100 / tr["ep_u"].to_numpy() * 1e4, 0.0)
+    stop_lvl = (tr["x_kind"].to_numpy() == "level") & (tr["reason"].to_numpy() == "stop")
+    slip_out = np.where(stop_lvl, cents / 100 / tr["xp_u"].to_numpy() * 1e4, 0.0)
+    tr["net_S"] = tr["net_B"] - slip_in - slip_out
     return tr
 
 
@@ -164,7 +235,9 @@ def execute(tr: pd.DataFrame, ctx: Context, mode: str = "switch", sig: str = "SO
             bear_min_price: float = SOXS_MIN_PRICE) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Map signal-chart trades to instrument trades. Returns (trades, skipped_bearish)."""
     cols = ["date", "d", "sig", "e", "xb", "s", "inst", "side", "ep", "xp", "ep_u", "xp_u", "x_kind",
-            "reason", "entry_min", "exit_min", "gross_bps"]
+            "reason", "entry_min", "exit_min", "gross_bps", "e_kind"]
+    if "e_kind" not in tr.columns:
+        tr = tr.assign(e_kind="open")
     if tr.empty:
         return pd.DataFrame(columns=cols), tr.iloc[0:0]
     parts = []
@@ -202,7 +275,16 @@ def execute(tr: pd.DataFrame, ctx: Context, mode: str = "switch", sig: str = "SO
         if len(b):
             d, e, xb = b["d"].to_numpy(), b["e"].to_numpy(), b["xb"].to_numpy()
             pS = tdS.p
-            ep = pS.o[d, e]
+            ep = pS.o[d, e].astype(float)
+            if "e_kind" in b:
+                # level (stop-order) entries: SOXS price mirrored from the SOXL fill level, anchored at the bar open
+                m_le = (b["e_kind"] == "level").to_numpy()
+                if m_le.any():
+                    P0 = b["ep"].to_numpy()[m_le]
+                    oL = tdL.p.o[d[m_le], e[m_le]]
+                    pcL0 = tdL.pc[d[m_le]]
+                    mapped0 = pS.o[d[m_le], e[m_le]] * (2 - P0 / pcL0) / (2 - oL / pcL0)
+                    ep[m_le] = np.clip(mapped0, pS.l[d[m_le], e[m_le]], pS.h[d[m_le], e[m_le]])
             kinds = b["x_kind"].to_numpy()
             xp = np.full(len(b), np.nan)
             m_open = np.isin(kinds, ["open", "gap"])
@@ -345,6 +427,9 @@ def add_quote_fills(tr: pd.DataFrame, cm_b, periods=("dev", "val", "hold")) -> p
     ok_e = _ok(ent_bid, ent_ask)
     ok_x = _ok(ex_bid, ex_ask) | (kinds == "official")
     entry_fill = np.where(side > 0, ent_ask, ent_bid)
+    if "e_kind" in tr:
+        hs_e = (ent_ask - ent_bid) / 2
+        entry_fill = np.where(tr["e_kind"].to_numpy() == "level", tr["ep_u"].to_numpy() + side * hs_e, entry_fill)
     hs_x = (ex_ask - ex_bid) / 2
     xp_u = tr["xp_u"].to_numpy()
     reason = tr["reason"].to_numpy()
@@ -379,7 +464,7 @@ def summarize(tr: pd.DataFrame, ctx: Context, variant: str, skipped: pd.DataFram
     cal_period = period_of(ctx.dates)
     per_col = period_of(tr["date"]) if len(tr) else np.array([], dtype=object)
     sk_per = period_of(skipped["date"]) if skipped is not None and len(skipped) else np.array([], dtype=object)
-    cases = [c for c in ("A", "B", "Q") if f"net_{c}" in tr.columns]
+    cases = [c for c in ("A", "B", "Q", "S") if f"net_{c}" in tr.columns]
     for per in periods:
         n_days = int((cal_period == per).sum())
         t_per = tr[per_col == per] if len(tr) else tr

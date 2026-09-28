@@ -19,8 +19,10 @@ MAIN_PERIODS = ("pre", "dev", "val")          # holdout stays masked until a var
 
 
 class Runner:
-    def __init__(self, key: str):
+    def __init__(self, key: str, stop_slippage: bool = False, quote_periods=("dev", "val", "hold")):
         self.key = key
+        self.stop_slippage = stop_slippage        # adds case S (case B + 1 cent per stop-order fill)
+        self.quote_periods = quote_periods
         self.out = C.RESEARCH_DIR / key
         self.out.mkdir(parents=True, exist_ok=True)
         self.t0 = time.time()
@@ -33,22 +35,46 @@ class Runner:
 
     # ------------------------------------------------------------------ core
     def trades(self, fn, sig: str = "SOXL", mode: str = "switch", is_trades: bool = False,
-               sim_kwargs: dict | None = None, day_mask=None, **params):
-        obj = fn(self.ctx, sig=sig, **params)
-        if day_mask is not None:            # day-level gate (Study 5): keep only days where the mask is True
-            obj = obj[np.asarray(day_mask, bool)[obj["d"].to_numpy().astype(int)]]
-        tr = obj if is_trades else E.simulate(self.ctx[sig], obj, **(sim_kwargs or {}))
-        ex, sk = E.execute(tr, self.ctx, mode=(mode if sig == "SOXL" else "ls"), sig=sig)
-        ex = E.add_costs(ex, self.cms)
-        return ex, sk
+               sim_kwargs: dict | None = None, day_mask=None, legs=None, max_per_day: int | None = None,
+               quote: bool = False, **params):
+        """Trades for one rule. ``legs`` (e.g. ("A", "B")) runs an equal-size scale-out: each leg is simulated
+        from the same intents, positions are limited jointly (``max_per_day`` signals a day, one position at
+        a time) and the legs are merged into one trade per signal."""
+        emode = mode if sig == "SOXL" else "ls"
+        if legs is None and max_per_day is None:
+            obj = fn(self.ctx, sig=sig, **params)
+            if isinstance(obj, tuple):          # (intents, close-based exit arrays)
+                obj, kw = obj
+                sim_kwargs = {**(sim_kwargs or {}), **kw}
+            if day_mask is not None:            # day-level gate (Study 5): keep only days where the mask is True
+                obj = obj[np.asarray(day_mask, bool)[obj["d"].to_numpy().astype(int)]]
+            tr = obj if is_trades else E.simulate(self.ctx[sig], obj, **(sim_kwargs or {}))
+            ex, sk = E.execute(tr, self.ctx, mode=emode, sig=sig)
+            return self._price(E.add_costs(ex, self.cms), quote), sk
+        sims = []
+        for lg in (legs or [None]):
+            obj = fn(self.ctx, sig=sig, **({"leg": lg} if lg else {}), **params)
+            it, kw = obj if isinstance(obj, tuple) else (obj, {})
+            sims.append(E.simulate(self.ctx[sig], it, one_position=False, **{**(sim_kwargs or {}), **kw}))
+        exs, sk0 = [], None
+        for tr in E.filter_positions(sims, max_per_day):
+            ex, sk = E.execute(tr, self.ctx, mode=emode, sig=sig)
+            exs.append(self._price(E.add_costs(ex, self.cms), quote))
+            sk0 = sk if sk0 is None else sk0
+        return (E.merge_legs(exs, legs) if len(exs) > 1 else exs[0]), sk0
+
+    def _price(self, ex: pd.DataFrame, quote: bool) -> pd.DataFrame:
+        if self.stop_slippage:
+            ex = E.add_stop_slippage(ex)
+        if quote:
+            ex = E.add_quote_fills(ex, self.cms["B"], periods=self.quote_periods)
+        return ex
 
     def main_variant(self, vid: str, fn, quote: bool = False, is_trades: bool = False,
                      sim_kwargs: dict | None = None, mode: str = "switch", day_mask=None,
                      **params) -> pd.DataFrame:
         ex, sk = self.trades(fn, is_trades=is_trades, sim_kwargs=sim_kwargs, mode=mode, day_mask=day_mask,
-                             **params)
-        if quote:
-            ex = E.add_quote_fills(ex, self.cms["B"])
+                             quote=quote, **params)
         E.save_trades(ex, self.key, vid)
         if len(sk):
             E.save_trades(sk, self.key, f"{vid}_skipped_bearish")
@@ -94,6 +120,9 @@ class Runner:
                  "dev_t_net_B": E.pick(summ, vid, "dev").get("t_net"),
                  "pre_mean_net_B": E.pick(summ, vid, "pre").get("mean_net_bps"),
                  "pre_t_net_B": E.pick(summ, vid, "pre").get("t_net")}
+            vs = E.pick(summ, vid, "val", case="S")
+            if len(vs):
+                r["val_mean_net_S"] = vs.get("mean_net_bps")
             r["p_val_one_sided"] = C.one_sided_p(r["val_t_net_B"], int(r["val_days_traded"] or 0))
             r["c1_net_ge5"] = bool(np.nan_to_num(r["val_mean_net_B"], nan=-1e9) >= 5)
             r["c1_q_pos"] = (bool(r["val_mean_net_Q"] > 0) if np.isfinite(r["val_mean_net_Q"]) else None)

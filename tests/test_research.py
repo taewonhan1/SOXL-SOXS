@@ -132,3 +132,52 @@ def test_switch_execution(ctx):
     exc = E.add_costs(ex, {"A": C.cost_model(0.0), "B": C.cost_model(C.COMMISSION_B)})
     assert (exc["cost_B"] >= exc["cost_A"]).all()
     assert np.allclose(exc["net_B"], exc["gross_bps"] - exc["cost_B"])
+
+
+@pytest.mark.parametrize("gen,kwargs", [
+    (R.s10_hh_intents, {"entry": "stop", "exit_": "X2R", "window_end": 44}),
+    (R.s10_hh_intents, {"entry": "close", "exit_": "XSO", "window_end": 44, "leg": "A"}),
+    (R.s11_bz_intents, {"entry": "close", "exit_": "XT"}),
+    (R.s11_bz_intents, {"entry": "stop", "exit_": "XS"}),
+    (R.s12_flag_intents, {"entry": "stop", "exit_": "XM"}),
+    (R.s12_flag_intents, {"entry": "close", "exit_": "X2R"}),
+])
+def test_scalp_rules_are_causal(ctx, gen, kwargs):
+    """Studies 10-12: every intent entered at or before bar ``cut`` is unchanged when the bars after
+    ``cut`` are scrambled (stop-order entries fill inside bar e, so the check is on the entry bar)."""
+    cols = ["d", "sig", "e", "s", "stop", "target", "tx", "entry_px"]
+    base = gen(ctx, **kwargs)
+    rng = np.random.default_rng(3)
+    for d in rng.choice(base["d"].unique(), size=3, replace=False):
+        cut = int(base[base["d"] == d]["e"].min())
+        pert = _Ctx(ctx, {"SOXL": _perturbed(ctx, "SOXL", int(d), cut)})
+        b = gen(pert, **kwargs)
+        a = base[(base["d"] == d) & (base["e"] <= cut)][cols].reset_index(drop=True)
+        b = b[(b["d"] == d) & (b["e"] <= cut)][cols].reset_index(drop=True)
+        assert len(a) >= 1
+        pd.testing.assert_frame_equal(a, b)
+
+
+def test_level_entry_and_scale_out_legs(ctx):
+    td = ctx["SOXL"]
+    d = int(np.flatnonzero(td.full & (td.period == "val"))[20])
+    e = 120
+    lvl = float(td.p.l[d, e] + 0.5 * (td.p.h[d, e] - td.p.l[d, e]))
+    # a stop-order entry fills at its level inside bar e; no target can fill on the entry bar
+    it = E.make_intents([{"d": d, "sig": e - 1, "e": e, "s": 1, "entry_px": lvl, "stop": lvl * 0.9,
+                          "target": td.p.h[d, e] - 1e-9, "tx": e + 30}])
+    tr = E.simulate(td, it)
+    assert tr.iloc[0]["e_kind"] == "level" and np.isclose(tr.iloc[0]["ep"], lvl) and tr.iloc[0]["xb"] > e
+    # paired legs: the second signal (entry e+5) must be dropped while leg B (time exit e+30) is still open,
+    # even though leg A is already out
+    rows = [{"d": d, "sig": e - 1, "e": e, "s": 1, "stop": np.nan, "target": np.nan, "tx": e + 2},
+            {"d": d, "sig": e + 4, "e": e + 5, "s": 1, "stop": np.nan, "target": np.nan, "tx": e + 7}]
+    leg_a = E.simulate(td, E.make_intents(rows), one_position=False)
+    leg_b = E.simulate(td, E.make_intents([{**r, "tx": r["tx"] + 28} for r in rows]), one_position=False)
+    fa, fb = E.filter_positions([leg_a, leg_b], max_per_day=3)
+    assert len(fa) == len(fb) == 1 and int(fa.iloc[0]["e"]) == e
+    exs = [E.add_costs(E.execute(x, ctx, mode="switch")[0], {"B": C.cost_model(C.COMMISSION_B)}) for x in (fa, fb)]
+    m = E.merge_legs(exs)
+    assert len(m) == 1 and int(m.iloc[0]["xb"]) == e + 30
+    assert np.isclose(m.iloc[0]["net_B"], (exs[0].iloc[0]["net_B"] + exs[1].iloc[0]["net_B"]) / 2)
+    assert np.isclose(m.iloc[0]["gross_bps"], (m.iloc[0]["xp"] / m.iloc[0]["ep"] - 1) * 1e4)
