@@ -235,11 +235,40 @@ survive, so they get their own registry entries, each committed before that stud
 - **SPY sanity check:** all four variants run L/S on SPY. Mean gross over pre+dev+val > 0 is required before the SOXL results are trusted. Otherwise report "did not reproduce".
 - **Cross-checks:** SOXX, SMH, NVDA, QQQ, TQQQ.
 
-## Study 5: big-day gates
+## Study 5: big-day gates (exploratory; registered 2026-09-28 before running)
 
-Registered separately before it runs, once survivors are known.
+**Why exploratory:** no variant from Studies 1–4 passed criteria 1–5. The main failure was validation t < 2.
+- The gates are therefore run as diagnostics on the four near-misses.
+- A near-miss here means a validation case-B net ≥ +5 bps that passed robustness (c4) and cross-checks (c5): S3-01, S3-13, S4-02 and S4-04.
+- These results **cannot** make a rule pass. They are counted in the BH family.
 
-Gates are G1–G4 as in the plan. G3's event sources will be fixed in that entry.
+**Gates** (day-level, known before the rule's first decision)
+- **G1:** the prior day's regular-session range ≥ the 60th percentile of the 60 sessions ending the prior day.
+- **G2:** RVOL15 = volume of bars 0..14 ÷ the prior-14-session mean of the same, ≥ 1.5. All four rules decide at or after 09:45.
+- **G3:** event day, meaning any of:
+  - (a) The session after an NVDA, AMD, AVGO or MU earnings release. Detected causally: that stock's after-hours (16:00–20:00) volume on day d−1 ≥ 5× its median over the prior 60 sessions.
+  - (b) A scheduled FOMC statement day, from the list below.
+  - (c) An 08:30 macro-release day: QQQ's 08:30 1-minute bar volume ≥ 5× its median over the prior 60 sessions. This is a CPI proxy, because official CPI calendars were unreachable from this session. It also catches payrolls and PPI.
+- **G4:** G1 or G2 or G3.
+
+**FOMC statement days used by G3(b)**
+
+| Year | Dates |
+|---|---|
+| 2019 | 01-30, 03-20, 05-01, 06-19, 07-31, 09-18, 10-30, 12-11 |
+| 2020 | 01-29, 04-29, 06-10, 07-29, 09-16, 11-05, 12-16 (the March 2020 emergency actions are excluded) |
+| 2021 | 01-27, 03-17, 04-28, 06-16, 07-28, 09-22, 11-03, 12-15 |
+| 2022 | 01-26, 03-16, 05-04, 06-15, 07-27, 09-21, 11-02, 12-14 |
+| 2023 | 02-01, 03-22, 05-03, 06-14, 07-26, 09-20, 11-01, 12-13 |
+| 2024 | 01-31, 03-20, 05-01, 06-12, 07-31, 09-18, 11-07, 12-18 |
+| 2025 | 01-29, 03-19, 05-07, 06-18, 07-30, 09-17, 10-29, 12-10 |
+| 2026 | 01-28, 03-18, 04-29, 06-17, 07-29, 09-16 |
+
+**Variants:** S5-01..S5-16, rule-major (S3-01, S3-13, S4-02, S4-04) × gate (G1, G2, G3, G4).
+
+**Decision rule:** a gate is "kept" only if it raises case-B mean net per trade versus the ungated rule in both dev and val.
+
+**Descriptive side check:** SOXL's next-day range after NR7 days versus other days, 2022–2026.
 
 ## Study 6: failed-break fade (4 variants)
 
@@ -324,13 +353,16 @@ Gates are G1–G4 as in the plan. G3's event sources will be fixed in that entry
 - **C2:** the close is within 0.1% of any of PM high/low, PD high/low, or OR15 high/low (OR15 only from bar 15).
 - **C3:** |c − VWAP| ≥ 2 VWAP-σ.
 
-## Study 8: execution
+## Study 8: execution (exploratory; registered 2026-09-28 before running)
 
-Registered separately before it runs, for survivors only:
-- X1: limit at the midpoint for 10 s, then cross.
-- X2: limit at the near side + 1 tick for 10 s, then cross.
-- S1: skip bearish trades when SOXS < $10.
-- S2: short SOXL instead.
+There are no survivors, so this also runs on the four near-misses (S3-01, S3-13, S4-02, S4-04).
+
+- **S8-01..S8-04:** the bearish leg is **short SOXL** on every day (switch_short mode) instead of SOXS with the $10 rule. Borrow cost is assumed zero for intraday shorts.
+- **X1/X2 (limit entries): deferred, not run.**
+  - The near-miss rules trade at most about once a day, at 09:45–15:30.
+  - SOXL's measured half-spread there is about 1–3 bps, against 20–57 bps gross per trade.
+  - The fill-model upgrade would be second-order, and it only matters for a rule that passes.
+- These results cannot make a rule pass. They are counted in the BH family.
 
 ## Study 9: monitors and paper log
 
