@@ -1,0 +1,13 @@
+family,variant,model,penalty,n_features,auc_win_pre,rank_corr_net_pre,all_mean_net_pre,top30_mean_net_pre,top30_n_pre,auc_win_val,rank_corr_net_val,all_mean_net_val,top30_mean_net_val,top30_n_val,largest_weights
+HH,S10-09,logit_win,1.0000,40,0.5621,0.1644,-6.8479,-0.7242,70,0.5097,-0.0786,-8.6069,-25.5323,32,"ret_since_open +1.15, dist_vwap_bps -0.71, ret_since_prev_close +0.65, SOXX_ret_since_prev_close +0.65, gap_atr -0.59"
+HH,S10-09,ridge_net,1.0000,40,0.5478,0.1786,-6.8479,0.9770,70,0.4973,0.0152,-8.6069,-7.2456,32,"pm_ret -93.59, ret_since_prev_close +83.13, SOXX_ret_since_prev_close +82.77, ret_since_open +62.24, dist_vwap_bps -50.23"
+HH,S10-11,logit_win,1000.0000,40,0.5823,0.0575,-9.8254,-0.6925,55,0.5262,-0.1799,-29.0296,-39.8410,25,"dow +0.01, impulse_z +0.01, ret_since_prev_close +0.01, SOXX_ret_since_prev_close +0.01, rvol_tod +0.01"
+HH,S10-11,ridge_net,1000.0000,40,0.6042,0.1774,-9.8254,18.3810,55,0.5875,0.0225,-29.0296,-15.0886,25,"impulse_z +2.79, is_bull +2.66, beyond_pd_extreme_bps +2.60, dow +2.40, giveback -1.82"
+BZ,S11-01,logit_win,1000.0000,44,0.5095,-0.0795,-4.9552,0.4015,215,0.4502,-0.1899,-12.5884,-10.4410,119,"rvol_1m +0.03, QQQ_ret_5m +0.02, rvol_tod +0.02, giveback -0.02, NVDA_ret_5m +0.02"
+BZ,S11-01,ridge_net,1.0000,44,0.4663,0.0187,-4.9552,-6.3346,215,0.5057,-0.0032,-12.5884,-5.2354,119,"ret_since_open +29.82, ret_since_prev_close -16.12, dist_vwap_sd +15.08, SOXX_ret_since_prev_close -14.93, dist_from_day_extreme_atr +14.93"
+BZ,S11-04,logit_win,1000.0000,44,0.5200,0.0169,-3.9475,3.4067,194,0.4879,-0.0247,-17.2291,-8.3430,105,"rvol_1m +0.03, is_bull +0.02, tracking_gap_bps -0.02, QQQ_ret_5m +0.02, pause_bars -0.02"
+BZ,S11-04,ridge_net,1.0000,44,0.5224,0.0545,-3.9475,6.2613,194,0.4542,-0.0950,-17.2291,-23.5375,105,"SOXX_ret_5m -24.38, ret_5m +20.60, ret_since_open +19.41, gap -16.41, dist_vwap_sd +16.01"
+Flag,S12-01,logit_win,1000.0000,43,0.5369,0.0334,-5.1717,-0.6307,290,0.5890,0.1155,-4.5730,2.7507,130,"ret_30m -0.03, NVDA_ret_since_prev_close +0.02, ret_since_open +0.02, beyond_pd_extreme_bps +0.02, dist_vwap_sd +0.02"
+Flag,S12-01,ridge_net,1000.0000,43,0.4676,0.1386,-5.1717,-8.4877,290,0.4916,0.1591,-4.5730,-8.5108,130,"ret_30m -5.92, rv_30m -4.61, tracking_gap_bps -3.91, NVDA_ret_5m -2.96, ret_since_open +2.41"
+Flag,S12-04,logit_win,1000.0000,43,0.6049,-0.1361,-8.8179,-0.3435,260,0.5223,-0.1502,-10.0165,-19.4857,111,"ret_30m -0.03, event_day +0.02, ret_5m +0.02, QQQ_ret_5m +0.02, ret_since_open +0.02"
+Flag,S12-04,ridge_net,1000.0000,43,0.5288,-0.0469,-8.8179,-10.4663,260,0.4951,-0.0825,-10.0165,-4.4080,111,"ret_30m -5.55, event_day +4.57, impulse_z +4.42, tracking_gap_bps -4.30, trade_no -4.24"

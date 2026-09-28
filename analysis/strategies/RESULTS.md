@@ -102,6 +102,39 @@ Per-variant numbers are in `study10_hitchhiker/`, `study11_bone_zone/` and `stud
   - By time of day, no bucket is positive in all three periods. For example, flag close-entries in 09:30–10:00 made +24 bps in 2022–24, but −11 in 2019–21 and −14 in validation. These splits are exploratory.
 - **Cross-checks.** In validation on SOXX and SMH, the Bone Zone-like and flag-like rules are within ±3 bps gross, and the Hitchhiker-like rules range from −14 to +7. The absence of an edge is not specific to the leveraged ETF.
 
+## Exploratory: what separated the winning scalps (Studies 10–12)
+
+Script: `scripts/research/scalp_winners.py`. Outputs: `scalps_winners/`.
+- Coverage: 2019–2025 only, per period. Nothing here was pre-registered.
+- Features: the look-ahead-tested data elements (`soxlab/features.py`), sampled at the last completed bar before entry, plus the setup's shape.
+
+**Winners exist, but not often enough.** 23–42% of trades win, and the average win is larger than the average loss:
+
+| Setup | Win rate | Average win | Average loss |
+|---|---|---|---|
+| Bone Zone-like | 34–38% | +72 to +96 bps | −45 to −72 bps |
+| Flag-like | 23–31% | +145 to +174 bps | −52 to −84 bps |
+| Hitchhiker-like | 35–42% | +100 to +141 bps | −81 to −107 bps |
+
+The single best trades made +4% to +19%. The winners still do not cover the more frequent losers.
+
+**Which data elements separated winners from losers.** 41 elements × 6 rule versions = 248 tests, each checked in 2019–21, 2022–24 and 2025 separately.
+- **Only one relationship holds up** (same sign in all three periods, BH q ≤ 0.10): for Hitchhiker-like breakouts, whether the trade goes the same way as the opening gap.
+  - Related elements say the same thing: the pre-market move, and price already beyond the prior day's high (for longs) or low (for shorts).
+  - The rank correlation with the trade result is +0.13 to +0.24 in each period, for the close-entry version.
+- **Split by gap direction, across all 12 Hitchhiker-like variants:**
+  - Against the gap, every variant loses in every period: −7 to −70 bps per trade.
+  - With the gap, 4 variants are positive in all three periods. These are the close-confirmed entries with breakouts by 09:59 or 10:14.
+  - The best is S10-03: +15 (2019–21), +24 (2022–24) and +27 (2025) bps per trade, over 89 trades (pooled t 1.6).
+- **Bone Zone-like and flag-like:** no element holds up. Going with the gap does not help them either; with-gap trades lose −5 to −11 bps.
+- **Elements that do not separate winners in any setup:**
+  - VWAP distance, relative volume, EMA9/21 trend, time of day.
+  - SOXX, NVDA and QQQ short-term moves.
+  - 1-minute, 30-minute and daily volatility.
+  - Impulse size, pullback depth, volume dry-up, stop size, trade number and event days.
+- **Combined model:** using all elements, fitted on 2022–24 only, it does not pick winners in 2019–21 or 2025. AUC is 0.45–0.61, where 0.5 is a coin flip.
+- **Status:** these findings are post-hoc. A gap-direction Hitchhiker needs its own pre-registered test on unseen data: the sealed 2026 holdout, or forward trades.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -140,6 +173,7 @@ Per-variant numbers are in `study10_hitchhiker/`, `study11_bone_zone/` and `stud
   - Study 7: `stage1.csv`
   - Studies 10–12: summaries also carry case S (stop-slippage stress).
 - `scalps_breakdown/`: Studies 10–12 by side, entry time, year, cost case and exit reason, plus `setup_geometry.csv`.
+- `scalps_winners/`: exploratory winner-vs-loser analysis for Studies 10–12: per-feature tests, gap alignment and out-of-sample models.
 - `output/`: the supplementary spread table and the event calendar.
 - Trade-level files: `data/research/trades/` (gitignored, reproducible).
 - Re-run a study: `cd scripts/research && python run_studyN.py`, then `python evaluate_all.py`.
