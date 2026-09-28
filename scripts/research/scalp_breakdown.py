@@ -9,6 +9,7 @@ import pandas as pd
 
 from runlib import ROOT  # noqa: I001
 from soxlab.research import common as C
+from soxlab.research import rules as R
 
 STUDIES = ["study10_hitchhiker", "study11_bone_zone", "study12_flags"]
 OUT = C.RESEARCH_DIR / "scalps_breakdown"
@@ -21,6 +22,36 @@ def block(g: pd.DataFrame, col: str = "net_B") -> dict:
     mu, t, _ = C.cluster_t(x, g["date"].to_numpy()) if len(x) else (np.nan, np.nan, 0)
     return {"n": len(x), "mean_net_B": mu, "t": t, "win_rate": float((x > 0).mean()) if len(x) else np.nan,
             "mean_gross": float(g["gross_bps"].mean()) if len(x) else np.nan}
+
+
+def setup_geometry() -> pd.DataFrame:
+    """Stop distance (R, bps from the entry price to the protective stop) of every SOXL setup vs the modelled
+    case-B round trip (two half-spreads + two commissions; fees of ~0.3 bps left out). Uses no returns."""
+    ctx = C.Context()
+    L = ctx["SOXL"]
+    cm = C.cost_model(C.COMMISSION_B)
+    rows = []
+    for name, fn, prm in [("HH, breakout by 10:14, stop entry", R.s10_hh_intents,
+                           dict(window_end=44, entry="stop", exit_="X2R")),
+                          ("BZ, close entry", R.s11_bz_intents, dict(entry="close", exit_="XT")),
+                          ("BZ, stop entry", R.s11_bz_intents, dict(entry="stop", exit_="XT")),
+                          ("Flag, stop entry", R.s12_flag_intents, dict(entry="stop", exit_="XM")),
+                          ("Flag, close entry", R.s12_flag_intents, dict(entry="close", exit_="XM"))]:
+        it = fn(ctx, **prm)
+        d, e = it["d"].to_numpy().astype(int), it["e"].to_numpy().astype(int)
+        ep = np.where(np.isfinite(it["entry_px"]), it["entry_px"], L.p.o[d, e])
+        rb = np.abs(ep - it["stop"].to_numpy()) / ep * 1e4
+        per = C.period_of(L.dates[d])
+        epu = ep * L.fac[d]
+        rt = 2 * cm.half_spread_bps("SOXL", pd.DatetimeIndex(L.dates[d]).year.to_numpy(), 570 + e, epu) + \
+            2 * cm.commission_bps(epu)
+        for pr in ("dev", "val"):
+            m = per == pr
+            rows.append({"setup": name, "period": pr, "setups": int(m.sum()), "median_R_bps": np.median(rb[m]),
+                         "p25_R_bps": np.percentile(rb[m], 25), "p75_R_bps": np.percentile(rb[m], 75),
+                         "median_roundtrip_cost_bps": np.median(rt[m]),
+                         "median_cost_share_of_R": np.median(rt[m] / rb[m])})
+    return pd.DataFrame(rows)
 
 
 def main() -> None:
@@ -58,7 +89,7 @@ def main() -> None:
                 year_rows.append({"variant": vid, "year": y, **block(g)})
     res = {"by_side": pd.DataFrame(side_rows), "by_entry_time": pd.DataFrame(tod_rows),
            "val_cost_cases": pd.DataFrame(case_rows), "val_exits": pd.DataFrame(exit_rows),
-           "by_year": pd.DataFrame(year_rows)}
+           "by_year": pd.DataFrame(year_rows), "setup_geometry": setup_geometry()}
     pd.set_option("display.width", 220)
     for k, df in res.items():
         df.to_csv(OUT / f"{k}.csv", index=False, float_format="%.4f")

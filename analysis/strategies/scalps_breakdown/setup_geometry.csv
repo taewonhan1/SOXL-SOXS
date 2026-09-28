@@ -1,0 +1,11 @@
+setup,period,setups,median_R_bps,p25_R_bps,p75_R_bps,median_roundtrip_cost_bps,median_cost_share_of_R
+"HH, breakout by 10:14, stop entry",dev,202,105.5398,81.3695,131.0746,7.8378,0.0810
+"HH, breakout by 10:14, stop entry",val,89,84.8790,67.0391,110.3585,5.8661,0.0739
+"BZ, close entry",dev,2238,43.5524,29.0458,64.3554,7.3008,0.1700
+"BZ, close entry",val,850,44.3433,28.8667,68.0889,6.1925,0.1453
+"BZ, stop entry",dev,1766,57.4896,41.6490,81.0602,7.2250,0.1308
+"BZ, stop entry",val,676,57.8675,39.9960,83.4746,6.2295,0.1133
+"Flag, stop entry",dev,2467,56.2694,41.6006,79.3809,7.2218,0.1308
+"Flag, stop entry",val,944,54.7100,39.6320,81.6180,6.1821,0.1145
+"Flag, close entry",dev,1874,68.2181,49.3347,96.7644,7.2095,0.1063
+"Flag, close entry",val,710,67.2021,45.6254,96.7762,6.2364,0.0971

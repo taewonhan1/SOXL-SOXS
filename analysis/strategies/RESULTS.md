@@ -1,17 +1,27 @@
-# Strategy research results: pre-registered studies 1–9
+# Strategy research results: pre-registered studies 1–12
 
 Run 2026-09-28. The rules were fixed in [REGISTRY.md](REGISTRY.md) before any study ran, as shown by the git history.
-[RESEARCH_PLAN.md](../../RESEARCH_PLAN.md) describes the plan. Every number below comes from the per-study CSVs in this folder.
+[RESEARCH_PLAN.md](../../RESEARCH_PLAN.md) describes the plan for Studies 1–9. Studies 10–12 were requested afterwards:
+1-minute Hitchhiker-, Bone Zone- and flag-like momentum scalps. They were registered in REGISTRY.md and committed before
+running. Every number below comes from the per-study CSVs in this folder.
 
 ## Bottom line
 
 **No rule passed the pre-registered bar.**
-- 70 variants were tested across Studies 1–6 and 8, plus 60 pattern screens in Study 7.
+- 94 variants were tested across Studies 1–6, 8 and 10–12, plus 60 pattern screens in Study 7.
 - None meets criteria 1–5.
-- None survives the Benjamini–Hochberg correction: the smallest q is 0.43, against a required 0.10.
+- None survives the Benjamini–Hochberg correction across all 94. The smallest q is 0.58, against a required 0.10. Within Studies 1–8 alone it is 0.43.
 - The **2026 holdout (Jan–Sep 2026) has not been opened for any rule.** It is still available as a one-time test.
 
-The main failure is statistical significance in the 15-month validation window. Two rule families were consistently positive after costs in both development and validation, and passed every robustness and cross-ticker check except significance:
+**The 1-minute momentum scalps (Studies 10–12, 24 variants) fail differently from the near-misses: they have no edge before costs.**
+- In validation, Bone Zone-like and flag-like entries on SOXL's 1-minute chart capture −10 to +3 bps gross per trade on average.
+- Hitchhiker-like entries range from −24 to +17 bps gross. The positive ones rest on 44–105 validation trades, and they lose in 2022–24.
+- They pay about 7 bps per round trip.
+- 21 of the 24 lose after costs in validation, and none is significant (within-family q = 1.0).
+- The Bone Zone-like and flag-like rules lose in almost every year from 2019 to 2025.
+- SOXL is not too expensive to scalp. Stops sit 45–105 bps away, so costs are only 7–17% of the risk per trade. These particular entries simply do not predict the next few minutes.
+
+For Studies 1–8, the main failure is statistical significance in the 15-month validation window. Two rule families were consistently positive after costs in both development and validation, and passed every robustness and cross-ticker check except significance:
 - The **15-minute opening-range breakout** (Study 3).
 - **Noise-boundary momentum** (Study 4).
 
@@ -35,6 +45,9 @@ Numbers are case-B net bps per trade: measured spreads plus $0.0035/share and fe
 | 7 Chart patterns | — | — | — | — | **Fail.** 0 of 60 stage-1 tests pass (pattern × context × horizon). No combination shows even a significant positive edge before costs. |
 | 8 Execution (exploratory) | S8-01 (breakout, short SOXL for bearish legs) | **+49.3 (1.89)** | +26.6 | +2.3 | **Diagnostic only.** Replacing SOXS with short SOXL adds about 60 validation trades that the $10 SOXS rule used to skip. This is the highest validation t of any rule. Limit-order entries were deferred as second-order. |
 | 9 Monitors and paper log | — | — | — | — | Built. Forward testing starts 2026-09-28. |
+| 10 Hitchhiker-like | S10-02 (breakout by 09:59, buy-stop entry, half at 1R + EMA9 trail) | +9.3 (0.65) | −16.7 | +1.1 | **Fail.** 44 validation trades. In 2022–24, 11 of 12 variants lose and the 12th is flat (+0.1). Close-confirmed entries lose −7 to −31 in validation. |
+| 11 Bone Zone-like | S11-03 (next-open entry, half at 1R + EMA21 trail) | −11.4 (−2.91) | −7.0 | −4.7 | **Fail.** All 6 variants lose in all three periods (validation t −2.3 to −3.7). Gross is about 0 or negative on both bull and bear legs. |
+| 12 Flag-like | S12-01 (buy-stop on the trendline break, measured-move target) | −4.6 (−0.79) | −6.1 | −5.2 | **Fail.** Best of 6. Gross is +2.8 bps, below the ~7 bps cost. The other five lose −8 to −17 in validation. |
 
 ## Why nothing passed
 
@@ -46,7 +59,48 @@ With the validation trade counts (125–308), t ≥ 2 needs a mean of about +52�
 
 At the same edge and trade rate, about 4–5 more months of trades would clear t ≥ 2. Forward paper trading supplies exactly that.
 
-Multiple testing works against every individual result too. The smallest one-sided p (0.030) becomes q = 0.43 after correcting for 70 variants.
+Multiple testing works against every individual result too. The smallest one-sided p (0.030) becomes q = 0.43 after correcting for 70 variants, and 0.58 after correcting for all 94 variants.
+
+The Studies 10–12 scalps fail for a different reason: their mean is negative, not just too small to be significant.
+
+## Studies 10–12: 1-minute momentum scalps
+
+The rules are in [REGISTRY.md](REGISTRY.md): pole or impulse, pause or pullback, trigger, stop, exits, neighbours and delay.
+Per-variant numbers are in `study10_hitchhiker/`, `study11_bone_zone/` and `study12_flags/`. The breakdowns are in `scalps_breakdown/`.
+
+**How many setups SOXL gives.** One-position-at-a-time counts, validation (Oct 2024 → Dec 2025, 315 sessions):
+
+| Setup | Trades in validation | Median hold |
+|---|---|---|
+| Hitchhiker-like (first setup of the day) | 35–105, depending on the breakout deadline (09:59 / 10:14 / 10:29) | 11–19 min |
+| Bone Zone-like | 347–408 (about 1.1–1.3 a day) | 2–11 min |
+| Flag-like | 370–450 (about 1.2–1.4 a day) | 8–18 min |
+
+**Risk per trade vs cost.** Setup geometry only (`scalps_breakdown/setup_geometry.csv`):
+
+| Setup | Median stop distance R (validation) | Round trip, case B | Cost as a share of R |
+|---|---|---|---|
+| Hitchhiker-like, buy-stop | 85 bps | 5.9 bps | 7% |
+| Bone Zone-like, next-open entry | 44 bps | 6.2 bps | 15% |
+| Bone Zone-like, buy-stop | 58 bps | 6.2 bps | 11% |
+| Flag-like, buy-stop | 55 bps | 6.2 bps | 11% |
+| Flag-like, close entry | 67 bps | 6.2 bps | 10% |
+
+**Why they fail.** Numbers are validation, case B.
+- **No directional edge in the entries.**
+  - Bone Zone-like: all 6 variants have gross −2.5 to −9.8 bps.
+  - Flag-like: gross −9.6 to +2.8.
+  - The Bone Zone-like next-open version with a 2R-or-retest target (S11-01) wins 34% of trades. Target exits average +83 bps net and stop-outs −61 bps. With those payoffs, breaking even needs a hit rate of roughly 42%.
+- **Bearish legs, which trade SOXS, are the worst.** In validation, bear flags lose −17 to −31 bps per trade. Bearish Bone Zone-like legs lose −9 to −26.
+- **Entries.**
+  - For Hitchhiker-like breakouts, waiting for a 1-minute close above the high is much worse than a resting buy-stop: −7 to −31 against −9 to +9 in validation. The close-confirmed entry pays up after the breakout minute.
+  - For Bone Zone-like pullbacks, the buy-stop above the trigger candle is worse than taking the next open.
+- **Fill risk.** Case Q (real NBBO) is within about 1 bp of case B throughout. Case S, with one extra cent per stop-order fill, costs another 1–7 bps.
+- **No stable pocket.**
+  - By year: the Hitchhiker-like rule made money in 2019 in all 12 variants and lost in 2020 in all 12. After that it was mixed.
+  - Bone Zone-like and flag-like lose in almost every year.
+  - By time of day, no bucket is positive in all three periods. For example, flag close-entries in 09:30–10:00 made +24 bps in 2022–24, but −11 in 2019–21 and −14 in validation. These splits are exploratory.
+- **Cross-checks.** In validation on SOXX and SMH, the Bone Zone-like and flag-like rules are within ±3 bps gross, and the Hitchhiker-like rules range from −14 to +7. The absence of an edge is not specific to the leveraged ETF.
 
 ## What is being tracked forward
 
@@ -84,6 +138,9 @@ Multiple testing works against every individual result too. The smallest one-sid
   - Study 4: `spy_check.csv`
   - Study 5: `gate_decisions.csv`, `nr7_check.csv`
   - Study 7: `stage1.csv`
+  - Studies 10–12: summaries also carry case S (stop-slippage stress).
+- `scalps_breakdown/`: Studies 10–12 by side, entry time, year, cost case and exit reason, plus `setup_geometry.csv`.
 - `output/`: the supplementary spread table and the event calendar.
 - Trade-level files: `data/research/trades/` (gitignored, reproducible).
 - Re-run a study: `cd scripts/research && python run_studyN.py`, then `python evaluate_all.py`.
+  - For Studies 10–12, also run `python scalp_breakdown.py`.
