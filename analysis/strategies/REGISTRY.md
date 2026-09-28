@@ -1,0 +1,337 @@
+# Pre-registered variant registry
+
+This file fixes every rule, parameter, neighbour, cross-check and pass criterion **before any
+study is run**. Its git commit time is the proof of that. Studies 5 and 8 depend on which variants
+survive, so they get their own registry entries, each committed before that study runs.
+
+- Plan: [RESEARCH_PLAN.md](../../RESEARCH_PLAN.md)
+- Code: `soxlab/research/` (rules in `rules.py`, execution and costs in `engine.py`, statistics in `common.py`)
+
+---
+
+## 0. Global conventions
+
+**Charts and timing**
+- The signal chart is the regular-session 1-minute panel: bars 0..389 = 09:30..15:59 ET, split-adjusted.
+- A decision at bar j's close is filled at bar j+1's open. Inputs use only bars ≤ j, pre-market bars, and prior days.
+
+**Execution in switch mode (SOXL signals)**
+- Bullish → long SOXL.
+- Bearish → long SOXS, only if SOXS's **unadjusted prior official close ≥ $10**. Otherwise the trade is skipped and counted.
+- Stops, targets and exits are evaluated on SOXL's chart. The SOXS leg exits at the same bar and kind.
+- For an intrabar SOXL level P, the SOXS fill is SOXS_entry × (2 − P/pcL) / (2 − SOXL_entry/pcL), clipped to that SOXS bar's low–high.
+- One position at a time. $25k per trade. Results are in bps per trade.
+- Default exit is flat at the open of bar n_min − 5 (15:55; 12:55 on half-days).
+
+**Intrabar rules**
+- If a bar touches both the stop and the target, the stop wins.
+- A bar that opens beyond a level fills at that open.
+- Close-based exits fill at the next open.
+
+**Cost cases**
+- **A:** half-spread per side from the spread table (bucket × year × unadjusted price) + SEC Section 31 and FINRA TAF on sells. $0 commission.
+- **B:** A + $0.0035/share/side.
+- **Q:** real NBBO at the fill second. Buys at the ask, sells at the bid. Stop exits at the level ∓ the prevailing half-spread. Target exits at the level. Auction exits at the official close. Plus case-B commission and fees.
+- An official-close (auction) exit pays no exit half-spread in A/B.
+- Spread table sources:
+  - 2022–2026: `analysis/microstructure/output/cost_model_halfspread.csv`
+  - 2019–2021 and SPY: `analysis/strategies/output/cost_table_supplement.csv`
+
+**Periods**
+
+| Period | Dates |
+|---|---|
+| pre | 2019-01-02 → 2021-12-31 |
+| dev | 2022-01-03 → 2024-09-30 |
+| val | 2024-10-01 → 2025-12-31 |
+| hold | 2026-01-02 → 2026-09-25 |
+
+- Holdout results are not tabulated for any variant until it passes criteria 1–5 including BH.
+- Forward = paper trading from 2026-09-28.
+
+**Pass criteria (validation, side = all)**
+1. Case-B mean net ≥ **+5 bps/trade**, and case-Q mean net > 0. Q is computed for every Study 2 variant, and for any other variant before its holdout look.
+2. Case-B day-clustered **t ≥ 2**, and **≥ 60%** of calendar quarters with trades have a positive mean net.
+3. **Benjamini–Hochberg q ≤ 0.10** across all registered variants. The p-value is one-sided, from the case-B day-clustered t with G−1 df, where G = days with trades.
+4. **Robustness (case B):**
+   - (a) Entering one bar later keeps ≥ 50% of the base mean gross (base gross must be > 0).
+   - (b) The pre-declared neighbour's mean net is > 0.
+5. **Cross-check:** SOXX and SMH, run L/S on their own charts with the same rule, have a validation mean gross of the same sign as SOXL's.
+6. **Holdout:** case-B mean net ≥ 0. Looked at once, only after 1–5 pass.
+7. **Forward:** ≥ 60 paper trades. Pending.
+
+**Extra requirements for Studies 1 and 2**
+- Their effects were found in 2022–2026 data.
+- They must also show case-B mean net > 0 in **pre** (2019–21).
+- SOXX and SMH must show the same gross sign in pre and dev.
+
+**Multiple-testing family:** the 65 fixed variants below, plus every Study 5/7/8 variant that is later registered and run.
+
+**Cross-check and control tickers**
+- The same rule is run L/S on each ticker's own chart.
+- Index proxy: SOXX for SOXX, SMH and NVDA; QQQ for QQQ and TQQQ; SPY for SPY.
+- Each ticker's own spread table is used.
+
+---
+
+## Study 1: late-day fade (12 variants)
+
+**Rules**
+- **Days:** full sessions only.
+- **Inputs at the 15:29 bar close (bar 359):**
+  - D = SOXL c[359] / prior official close − 1.
+  - R = SOXX c[359] / SOXX prior official close − 1.
+- **Filter:** |R| ≥ thr, and D ≠ 0.
+- **Gate (when on):**
+  - Trade only if the OLS slope of y on x over the prior 120 full sessions is < 0 (needs ≥ 60 sessions).
+  - x = c[359]/open − 1; y = c[389]/c[359] − 1.
+- **Direction:** s = −sign(D).
+- **Entry:** open of bar 360 (15:30).
+- **Stop:** 1.5 × σ30 adverse from the entry price. σ30 = RMS of y over the prior 20 full sessions (needs ≥ 15).
+- **Exits:**
+  - E1: open of bar 385 (15:55).
+  - E2: close of bar 389 (15:59).
+  - E3: official close (closing auction) for SOXL legs. SOXS legs use E2, because SOXS's closing auction is tiny. In L/S cross-checks E3 uses the official close for both sides.
+
+| ID | thr | exit | gate |
+|---|---|---|---|
+| S1-01 | 1.0% | E1 | on |
+| S1-02 | 1.0% | E1 | off |
+| S1-03 | 1.0% | E2 | on |
+| S1-04 | 1.0% | E2 | off |
+| S1-05 | 1.0% | E3 | on |
+| S1-06 | 1.0% | E3 | off |
+| S1-07 | 2.0% | E1 | on |
+| S1-08 | 2.0% | E1 | off |
+| S1-09 | 2.0% | E2 | on |
+| S1-10 | 2.0% | E2 | off |
+| S1-11 | 2.0% | E3 | on |
+| S1-12 | 2.0% | E3 | off |
+
+- **Neighbour:** thr = 1.5%, same exit and gate.
+- **Delay:** entry at bar 361.
+- **Cross-checks:** SOXX, SMH, NVDA, QQQ, TQQQ, each with its own D, its own gate and its index proxy's R.
+
+## Study 2: opening burst continuation (16 variants)
+
+**Rules**
+- σ = √(mean r²) of SOXL 1-minute simple returns on bars 1..29 (09:31–09:59) over the prior 20 sessions (needs ≥ 15).
+- z = r_t / σ, for trigger bars t = 1..28.
+- **Trigger:** |z| ≥ k.
+- **Entry:** open of bar t+1, direction = sign(r_t).
+- **Exit:** open of bar t+1+hold.
+  - hold = 3 adds a stop at 1σ adverse from entry.
+  - hold = 1 has no stop.
+- Trades may not overlap, judged by the planned exit bar. At most 3 per day.
+- **Filters:**
+  - F0: none.
+  - F1: the trigger bar's volume ≥ 2× the prior-20-session mean volume of that minute.
+  - F2: close location (c−l)/(h−l) ≥ 0.75 for up triggers, ≤ 0.25 for down triggers.
+  - F3: sign(r_t) = sign(overnight gap). Gap = first open / prior official close − 1.
+
+**Variant order:** k ∈ {2, 3}, then hold ∈ {1, 3}, then filter ∈ {F0, F1, F2, F3}.
+
+| ID | k | hold | filter |
+|---|---|---|---|
+| S2-01 | 2 | 1 | F0 |
+| S2-02 | 2 | 1 | F1 |
+| S2-03 | 2 | 1 | F2 |
+| S2-04 | 2 | 1 | F3 |
+| S2-05 | 2 | 3 | F0 |
+| S2-06 | 2 | 3 | F1 |
+| S2-07 | 2 | 3 | F2 |
+| S2-08 | 2 | 3 | F3 |
+| S2-09 | 3 | 1 | F0 |
+| S2-10 | 3 | 1 | F1 |
+| S2-11 | 3 | 1 | F2 |
+| S2-12 | 3 | 1 | F3 |
+| S2-13 | 3 | 3 | F0 |
+| S2-14 | 3 | 3 | F1 |
+| S2-15 | 3 | 3 | F2 |
+| S2-16 | 3 | 3 | F3 |
+
+- **Neighbour:** k + 0.5.
+- **Delay:** entry at bar t+2.
+- **Case Q:** computed for every variant.
+- **Cross-checks:** SOXX, SMH, NVDA, QQQ, TQQQ.
+
+## Study 3: opening-range breakout (14 variants)
+
+**Design A (15-minute range)**
+- Opening range (OR) = high and low of bars 0..14.
+- Trigger: the first close outside the range on bars 15..tx−2.
+- Entry: next open.
+- Stop: the opposite OR side.
+- Exit: open of bar n_min − 5.
+
+**Design B (first 5-minute candle)**
+- Candle: open of bar 0 → close of bar 4, with its high H and low L.
+- Skip if the body is < 10% of the range.
+- Entry: open of bar 5, in the candle's direction.
+- Stop: L for longs, H for shorts.
+- Target: 10R.
+- Exit: open of bar n_min − 5.
+
+**Modifiers**
+- **RVOL5** = volume of bars 0..4 ÷ the prior-14-session mean of the same.
+- **ATR stop** = entry ∓ 0.10 × SOXL's daily ATR14 through the prior day. B's 10R target is measured from this stop.
+- **E1:** OR size within the prior 60 sessions' 20th–80th percentile (needs ≥ 40 sessions).
+- **E2:** the prior day's range ≥ the 60th percentile of the 60 sessions ending the prior day.
+- **Trail:** after +1R is touched, exit at the next open once a close crosses back through VWAP. The original stop stays in force.
+- Trades whose entry is already beyond the stop are skipped.
+
+| ID | Design | RVOL5 ≥ | Other |
+|---|---|---|---|
+| S3-01 | A | – | – |
+| S3-02 | B | – | – |
+| S3-03 | A | 1.0 | – |
+| S3-04 | A | 1.5 | – |
+| S3-05 | A | 2.0 | – |
+| S3-06 | B | 1.0 | – |
+| S3-07 | B | 1.5 | – |
+| S3-08 | B | 2.0 | – |
+| S3-09 | A | 1.0 | ATR stop 0.10 |
+| S3-10 | B | 1.0 | ATR stop 0.10 |
+| S3-11 | A | – | E1 |
+| S3-12 | A | – | E2 |
+| S3-13 | A | – | trail after +1R |
+| S3-14 | B | – | trail after +1R |
+
+**Neighbours**
+- S3-01: 20-minute OR.
+- S3-02: 10-minute candle.
+- RVOL variants: θ + 0.25.
+- ATR variants: 0.15.
+- S3-11: 15th–85th percentile band.
+- S3-12: 50th percentile.
+- Trail variants: +1.5R.
+
+**Delay:** +1 bar.
+**Cross-checks:** SOXX, SMH, NVDA, QQQ, TQQQ.
+
+## Study 4: noise-boundary momentum (4 variants)
+
+**Rules**
+- **Days:** full sessions only.
+- σ_move[t] = mean over the prior 14 full sessions of |c[t]/open − 1|.
+- UB = max(open, prior close) × (1 + k·σ_move[t]).
+- LB = min(open, prior close) × (1 − k·σ_move[t]).
+- **Check bars:** 29, 59, …, 359 (10:00 … 15:30).
+- **Entries and reversals:** at a check bar, a close > UB means long; < LB means short. If that differs from the current position, exit (if in one) and enter at the next open.
+- **Trailing exit (otherwise):** exit a long at the next open when the close < max(UB, VWAP); exit a short when the close > min(LB, VWAP).
+  - M = checked every bar.
+  - H = checked only at check bars.
+- **Flat:** open of bar 385. No entry at or after it.
+
+| ID | k | Trailing check |
+|---|---|---|
+| S4-01 | 1.0 | M |
+| S4-02 | 1.0 | H |
+| S4-03 | 1.5 | M |
+| S4-04 | 1.5 | H |
+
+- **Neighbour:** k + 0.25.
+- **Delay:** entry at bar t+2.
+- **SPY sanity check:** all four variants run L/S on SPY. Mean gross over pre+dev+val > 0 is required before the SOXL results are trusted. Otherwise report "did not reproduce".
+- **Cross-checks:** SOXX, SMH, NVDA, QQQ, TQQQ.
+
+## Study 5: big-day gates
+
+Registered separately before it runs, once survivors are known.
+
+Gates are G1–G4 as in the plan. G3's event sources will be fixed in that entry.
+
+## Study 6: failed-break fade (4 variants)
+
+**Levels**
+- PM = pre-market high/low (04:00–09:29, needs ≥ 5 pre-market bars).
+- PD = prior regular-session high/low.
+
+**Break and failure**
+- **Failed high:** a bar in 0..59 has high ≥ level + $0.01 (unadjusted cent). Failure = within that bar or the next 10, a close < level. Direction: bearish.
+- **Failed low:** mirror image, low ≤ level − $0.01 and a close > level. Direction: bullish.
+
+**Trade**
+- **Entry:** open after the failure bar.
+- **Stop:** the extreme since the break × (1 ± 0.1%).
+- **Target:**
+  - T1 = 1R.
+  - T2 = VWAP at the failure bar. There is no target if VWAP is not on the profitable side.
+- **Time stop:** 20 minutes, capped at the 15:55 flat.
+- At most one trade per level per day, and one position at a time.
+
+| ID | Levels | Target |
+|---|---|---|
+| S6-01 | PM | T1 |
+| S6-02 | PM | T2 |
+| S6-03 | PD | T1 |
+| S6-04 | PD | T2 |
+
+- **Neighbour:** failure window 15 bars.
+- **Delay:** +1 bar.
+- **Reporting:** failed highs (bear) and failed lows (bull) are also reported separately.
+- **Cross-checks:** SOXX, SMH, NVDA, QQQ, TQQQ.
+
+## Study 7: 1-minute chart patterns (15 stage-1 combinations × 4 horizons)
+
+**Stage 1 (development period only)**
+- Uses signal-chart (SOXL) returns from the next bar's open, at +1, +5, +15 and +30 minutes, signed by the pattern direction.
+- **Excess** = signed return − the pattern direction × the mean return of the same bar and horizon over all development days (time-of-day baseline).
+- **Net** = excess − the case-B SOXL round-trip cost at that time.
+- A combination passes stage 1 if, at some horizon, all three hold:
+  - net ≥ +5 bps
+  - day-clustered t ≥ 2
+  - BH q ≤ 0.10 across all 60 stage-1 tests
+- Passing combinations become stage-2 variants S7-xx:
+  - Entry at the next open in the pattern direction.
+  - Stop = the pattern extreme ∓ 0.1%.
+  - Flags keep their measured-move target. Squeezes use the middle band as the stop.
+  - Time exit at the passing horizon.
+  - Full criteria in switch mode.
+
+**Patterns** (bullish form; bearish is the mirror)
+- **Engulfing:**
+  - Bar t−1 red, bar t green.
+  - o_t ≤ c_{t−1} and c_t ≥ o_{t−1}.
+  - |c_t − o_t| ≥ 1.5 × the median |c − o| of bars t−20..t−1.
+  - Extreme = min(l_{t−1}, l_t).
+- **Hammer:**
+  - Lower wick ≥ 2 × body, where body = max(|c − o|, one cent).
+  - Upper wick ≤ 0.25 × range.
+  - Range ≥ 1.5 × the median range of bars t−20..t−1.
+  - Extreme = l_t.
+  - The shooting star is the mirror.
+- **Inside-bar break:**
+  - Bar t−1 lies inside bar t−2.
+  - Trigger: c_t > h_{t−2}.
+  - Extreme = l_{t−1}.
+- **Flag:**
+  - Impulse of n ∈ [3, 10] bars with net move ≥ 2.5·σ_tod·√n and ≥ 70% same-colour bars.
+  - σ_tod = RMS of SOXL 1-minute returns in the same half-hour over the prior 20 sessions.
+  - Then a pullback of m ∈ [3, 10] bars retracing 25–60% of the impulse, with a lower mean volume than the impulse.
+  - Trigger: c_t > the pullback's maximum high.
+  - Extreme = the pullback's low.
+  - Target = entry + the impulse's price move.
+- **Squeeze:**
+  - 20-bar Bollinger bands (SMA ± 2 sd of closes).
+  - Width at t−1 = the minimum of bars t−120..t−1, within the session.
+  - Trigger: the first close above the upper band.
+  - Stop = the middle band.
+  - No events before bar 121.
+
+**Contexts** (at the trigger bar)
+- **C1:** bars 0..29.
+- **C2:** the close is within 0.1% of any of PM high/low, PD high/low, or OR15 high/low (OR15 only from bar 15).
+- **C3:** |c − VWAP| ≥ 2 VWAP-σ.
+
+## Study 8: execution
+
+Registered separately before it runs, for survivors only:
+- X1: limit at the midpoint for 10 s, then cross.
+- X2: limit at the near side + 1 tick for 10 s, then cross.
+- S1: skip bearish trades when SOXS < $10.
+- S2: short SOXL instead.
+
+## Study 9: monitors and paper log
+
+No statistical test. See the plan.
