@@ -21,18 +21,30 @@ STUDIES = {  # study dir -> (confirmatory?, extra pre-sample checks?)
     "study6_failed_break_fade": (True, False),
     "study5_big_day_gates": (False, False),
     "study8_execution": (False, False),
+    "study10_hitchhiker": (True, False),
+    "study11_bone_zone": (True, False),
+    "study12_flags": (True, False),
 }
+FAMILY = {"study10_hitchhiker": "scalps_10_12", "study11_bone_zone": "scalps_10_12", "study12_flags": "scalps_10_12"}
 
 
 def main() -> None:
     frames = []
     for st, (confirm, extra) in STUDIES.items():
+        if not (C.RESEARCH_DIR / st / "verdicts.csv").exists():
+            print(f"missing {st}/verdicts.csv - run its study script first")
+            continue
         v = pd.read_csv(C.RESEARCH_DIR / st / "verdicts.csv")
         v["study"], v["confirmatory"], v["extra_checks"] = st, confirm, extra
         frames.append(v)
     allv = pd.concat(frames, ignore_index=True)
     allv["q_bh"] = C.bh_qvalues(allv["p_val_one_sided"].fillna(1.0).to_numpy())
     allv["c3_bh"] = allv["q_bh"] <= 0.10
+    # secondary: BH within each family (Studies 1-8; the 1-minute scalps of Studies 10-12)
+    allv["family"] = allv["study"].map(FAMILY).fillna("studies_1_8")
+    allv["q_bh_family"] = np.nan
+    for fam, idx in allv.groupby("family").groups.items():
+        allv.loc[idx, "q_bh_family"] = C.bh_qvalues(allv.loc[idx, "p_val_one_sided"].fillna(1.0).to_numpy())
 
     def _b(col):
         return allv[col].fillna(False).astype(bool) if col in allv else pd.Series(False, index=allv.index)
@@ -68,9 +80,11 @@ def main() -> None:
     dst = C.RESEARCH_DIR / "verdicts_all.csv"
     allv.to_csv(dst, index=False, float_format="%.4f")
     show = ["study", "variant", "val_n", "val_mean_net_B", "val_t_net_B", "val_quarters_pos", "dev_mean_net_B",
-            "pre_mean_net_B", "p_val_one_sided", "q_bh", "pass_1_5", "hold_opened", "fail_reasons"]
+            "pre_mean_net_B", "p_val_one_sided", "q_bh", "q_bh_family", "pass_1_5", "hold_opened", "fail_reasons"]
     print(allv[show].round(3).to_string(index=False))
     print(f"\nvariants: {len(allv)} | pass 1-5: {int(allv['pass_1_5'].sum())} | min q: {allv['q_bh'].min():.3f}")
+    for fam, g in allv.groupby("family"):
+        print(f"  {fam}: {len(g)} variants, min within-family q {g['q_bh_family'].min():.3f}")
     print(f"wrote {dst.relative_to(ROOT)}")
 
 
