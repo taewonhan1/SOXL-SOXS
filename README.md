@@ -6,6 +6,7 @@ Research repository on the intraday behavior of the Direxion Daily Semiconductor
 
 **Start here:** [reports/SOXL and SOXS intraday behavior.md](reports/SOXL%20and%20SOXS%20intraday%20behavior.md), the synthesized
 findings on whether SOXL/SOXS intraday behavior suits day trading and what data exists to track and backtest it.
+**Next:** [RESEARCH_PLAN.md](RESEARCH_PLAN.md), the pre-declared strategy research plan (not yet run).
 
 ## Layout
 
