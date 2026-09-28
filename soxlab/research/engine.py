@@ -246,6 +246,10 @@ def add_costs(tr: pd.DataFrame, cms: dict) -> pd.DataFrame:
     for inst, idx in tr.groupby("inst").groups.items():
         g = tr.loc[idx]
         y = yrs[tr.index.get_indexer(idx)]
+        if inst == "SOXL":
+            # SOXL split 15:1 on 2021-03-02; the 2021 spread row (median 1 cent) describes the post-split
+            # stock, so pre-split 2021 trades use the 2020 row (spreads of tens of cents at ~$400-600).
+            y = np.where(pd.to_datetime(g["date"]).to_numpy() < np.datetime64("2021-03-02"), np.minimum(y, 2020), y)
         for case, cm in cms.items():
             hs_in = cm.half_spread_bps(inst, y, g["entry_min"].to_numpy(), g["ep_u"].to_numpy())
             hs_out = cm.half_spread_bps(inst, y, g["exit_min"].to_numpy(), g["xp_u"].to_numpy())

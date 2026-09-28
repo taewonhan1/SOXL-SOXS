@@ -100,21 +100,23 @@ def main() -> None:
     jobs = [(T, d, h) for (T, y) in JOBS_SPEC for d in trading_days(y, cal) for h in WINDOWS]
     print(f"{len(jobs)} NBBO windows to sample", flush=True)
     frames = api.parallel_map(lambda j: (j, fetch_window(*j)), jobs, desc="nbbo-supp")
-    rows = []
+    # compress each window to a weighted distribution of spread values (cents) to keep memory small
+    parts = []
     for (T, d, h), df in frames:
         st = window_stats(df, d, h)
         if st.empty:
             continue
+        mid = float(np.average(st["mid"], weights=st["w"]))
+        cents = np.round(st["spread"].to_numpy() * 100, 2)
+        g = pd.DataFrame({"cents": cents, "w": st["w"].to_numpy()}).groupby("cents", as_index=False)["w"].sum()
+        g["hbps"] = g["cents"] / 100 / 2 / mid * 1e4
         b0, b1 = bucket_of(h)
-        st["ticker"], st["year"], st["bucket_start_et"], st["bucket_end_et"] = T, int(d[:4]), b0, b1
-        st["window"] = f"{d} {h}"
-        rows.append(st)
-    allq = pd.concat(rows, ignore_index=True)
+        g["ticker"], g["year"], g["b0"], g["b1"], g["window"] = T, int(d[:4]), b0, b1, f"{d} {h}"
+        parts.append(g)
+    allq = pd.concat(parts, ignore_index=True)
     out = []
-    for (T, y, b0, b1), g in allq.groupby(["ticker", "year", "bucket_start_et", "bucket_end_et"]):
-        cents = g["spread"].to_numpy() * 100
-        hbps = (g["spread"] / 2 / g["mid"]).to_numpy() * 1e4
-        w = g["w"].to_numpy()
+    for (T, y, b0, b1), g in allq.groupby(["ticker", "year", "b0", "b1"]):
+        cents, hbps, w = g["cents"].to_numpy(), g["hbps"].to_numpy(), g["w"].to_numpy()
         out.append({"ticker": T, "year": int(y), "bucket_start_et": b0, "bucket_end_et": b1,
                     "median_spread_cents": wquantile(cents, w, 0.5),
                     "mean_spread_cents": float(np.average(cents, weights=w)),
