@@ -33,16 +33,20 @@ class Runner:
 
     # ------------------------------------------------------------------ core
     def trades(self, fn, sig: str = "SOXL", mode: str = "switch", is_trades: bool = False,
-               sim_kwargs: dict | None = None, **params):
+               sim_kwargs: dict | None = None, day_mask=None, **params):
         obj = fn(self.ctx, sig=sig, **params)
+        if day_mask is not None:            # day-level gate (Study 5): keep only days where the mask is True
+            obj = obj[np.asarray(day_mask, bool)[obj["d"].to_numpy().astype(int)]]
         tr = obj if is_trades else E.simulate(self.ctx[sig], obj, **(sim_kwargs or {}))
         ex, sk = E.execute(tr, self.ctx, mode=(mode if sig == "SOXL" else "ls"), sig=sig)
         ex = E.add_costs(ex, self.cms)
         return ex, sk
 
     def main_variant(self, vid: str, fn, quote: bool = False, is_trades: bool = False,
-                     sim_kwargs: dict | None = None, **params) -> pd.DataFrame:
-        ex, sk = self.trades(fn, is_trades=is_trades, sim_kwargs=sim_kwargs, **params)
+                     sim_kwargs: dict | None = None, mode: str = "switch", day_mask=None,
+                     **params) -> pd.DataFrame:
+        ex, sk = self.trades(fn, is_trades=is_trades, sim_kwargs=sim_kwargs, mode=mode, day_mask=day_mask,
+                             **params)
         if quote:
             ex = E.add_quote_fills(ex, self.cms["B"])
         E.save_trades(ex, self.key, vid)

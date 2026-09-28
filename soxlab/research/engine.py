@@ -306,12 +306,19 @@ def nbbo_lookup(inst: str, ns_values) -> pd.DataFrame:
     return cache.set_index("ns").reindex(ns_values).reset_index()
 
 
-def add_quote_fills(tr: pd.DataFrame, cm_b) -> pd.DataFrame:
-    """Case Q net (bps) using real NBBO fills; falls back to case B for trades without a usable quote."""
+def add_quote_fills(tr: pd.DataFrame, cm_b, periods=("dev", "val", "hold")) -> pd.DataFrame:
+    """Case Q net (bps) using real NBBO fills for trades in ``periods`` (NaN elsewhere); trades without a
+    usable quote fall back to case B and are flagged in ``q_fallback``."""
     tr = tr.copy()
     if tr.empty:
         tr["net_Q"] = []
         return tr
+    in_scope = np.isin(period_of(tr["date"]), list(periods))
+    full = tr
+    tr = tr[in_scope].copy()
+    if tr.empty:
+        full["net_Q"], full["gross_Q"] = np.nan, np.nan
+        return full
     dates = pd.to_datetime(tr["date"])
     e_ns = np.array([bar_time_ns(dt, int(e)) for dt, e in zip(dates, tr["e"])], dtype=np.int64)
     kinds = tr["x_kind"].to_numpy()
@@ -356,7 +363,9 @@ def add_quote_fills(tr: pd.DataFrame, cm_b) -> pd.DataFrame:
     tr["net_Q"] = np.where(good, net_q, tr["net_B"])
     tr["q_fallback"] = (~good).astype(int)
     tr["q_entry_spread_bps"] = np.where(ok_e, (ent_ask - ent_bid) / ((ent_ask + ent_bid) / 2) * 1e4, np.nan)
-    return tr
+    for col in ("gross_Q", "net_Q", "q_fallback", "q_entry_spread_bps"):
+        full.loc[tr.index, col] = tr[col]
+    return full
 
 
 # --------------------------------------------------------------------------------------

@@ -49,7 +49,7 @@ def s1_gate_slope(td, window: int = 120, min_n: int = 60) -> np.ndarray:
 
 
 def s1_intents(ctx: Context, sig: str = "SOXL", thr: float = 0.01, gate: bool = True, exit_: str = "E1",
-               entry_delay: int = 0, mode: str = "switch") -> pd.DataFrame:
+               entry_delay: int = 0, exec_mode: str = "switch") -> pd.DataFrame:
     td, ix = ctx[sig], ctx[INDEX_FOR[sig]]
     c = td.p.c
     D = c[:, 359] / td.pc - 1
@@ -76,7 +76,7 @@ def s1_intents(ctx: Context, sig: str = "SOXL", thr: float = 0.01, gate: bool = 
         elif exit_ == "E2":
             tx, kind = 389, "close"
         else:   # E3: auction exit; in switch mode only for SOXL legs (SOXS legs use E2)
-            tx, kind = 389, ("official" if (s > 0 or mode == "ls") else "close")
+            tx, kind = 389, ("official" if (s > 0 or exec_mode == "ls") else "close")
         rows.append({"d": d, "sig": 359, "e": e, "s": s, "stop": stop, "tx": tx, "tx_kind": kind})
     return make_intents(rows)
 

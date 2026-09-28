@@ -1,6 +1,6 @@
 # SOXL/SOXS intraday strategy research plan
 
-**Status: plan only. Nothing below has been run.** Written 2026-09-28, building on
+**Status: executed 2026-09-28. Results: [analysis/strategies/RESULTS.md](analysis/strategies/RESULTS.md)** (no rule passed; two near-miss families are in forward paper trading). Written 2026-09-28, building on
 [reports/SOXL and SOXS intraday behavior.md](reports/SOXL%20and%20SOXS%20intraday%20behavior.md).
 
 **Goal:** find mechanical intraday rules on SOXL's 1-minute chart that clear trading costs on data they were not

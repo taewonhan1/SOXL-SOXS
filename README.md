@@ -6,7 +6,7 @@ Research repository on the intraday behavior of the Direxion Daily Semiconductor
 
 **Start here:** [reports/SOXL and SOXS intraday behavior.md](reports/SOXL%20and%20SOXS%20intraday%20behavior.md), the synthesized
 findings on whether SOXL/SOXS intraday behavior suits day trading and what data exists to track and backtest it.
-**Next:** [RESEARCH_PLAN.md](RESEARCH_PLAN.md), the pre-declared strategy research plan (not yet run).
+**Strategy research:** [RESEARCH_PLAN.md](RESEARCH_PLAN.md) (pre-declared plan) → [analysis/strategies/RESULTS.md](analysis/strategies/RESULTS.md) (results: no rule passed; near-misses in forward paper trading via `scripts/research/paper_log.py`).
 
 ## Layout
 
@@ -17,6 +17,8 @@ findings on whether SOXL/SOXS intraday behavior suits day trading and what data 
 | `tests/` | pytest suite for `soxlab`: harness timing, stop-first resolution, flat-by-15:55, costs, DST, feature truncation (look-ahead) tests |
 | `analysis/behavior/` | Standalone scripts and outputs profiling SOXL/SOXS intraday price behavior (volatility, events, direction, day types, VWAP/close, linkage, extended hours) |
 | `analysis/microstructure/` | Standalone scripts and outputs on spreads, depth, auctions, trade conditions and volume profiles. Writes `output/cost_model_halfspread.csv`, which `soxlab` reads as its half-spread source. |
+| `soxlab/research/`, `scripts/research/` | Pre-registered strategy studies: harness (SOXL-chart signals, SOXS mirror execution, cost cases A/B/Q), rules, study runners, evaluation, monitors, paper log |
+| `analysis/strategies/` | Registry, per-study outputs, `verdicts_all.csv`, `RESULTS.md`, `MONITOR.md` |
 | `analysis/backtests/` | `output/` holds the `soxlab` results: endpoint inventory, data-quality report, feature dictionary, daily tracker, behavior-probe battery tables and charts |
 | `research_notes/` | Research notes (markdown) behind the report, one file per workstream |
 | `reports/` | Final synthesized report(s) |

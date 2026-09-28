@@ -1,0 +1,5 @@
+variant,val_n,val_trades_per_day,val_mean_gross,val_mean_net_B,val_t_net_B,val_quarters_pos,val_days_traded,val_mean_net_Q,dev_mean_net_B,dev_t_net_B,pre_mean_net_B,pre_t_net_B,p_val_one_sided,c1_net_ge5,c1_q_pos,c2_t_and_quarters
+S8-01,308,0.9809,56.3595,49.2776,1.8945,0.8000,308,,26.6401,1.7315,2.3307,0.1962,0.0295,True,,False
+S8-02,308,0.9809,50.2344,43.1532,1.7651,0.8000,308,,23.1113,1.6081,-7.2840,-0.6655,0.0393,True,,False
+S8-03,261,0.8312,23.1832,16.1053,0.8337,0.8000,174,,23.9391,2.2263,3.5068,0.4331,0.2028,True,,False
+S8-04,171,0.5446,24.6415,17.4877,0.7504,0.6000,114,,19.9646,1.4518,-0.6029,-0.0570,0.2273,True,,False

@@ -1,0 +1,5 @@
+variant,spy_trades,spy_mean_gross_bps,spy_t_gross,spy_check_pass
+S4-01,2234,2.4726,3.4575,True
+S4-02,1512,3.1855,2.5952,True
+S4-03,1428,1.5942,1.7767,True
+S4-04,964,4.1139,2.8504,True
