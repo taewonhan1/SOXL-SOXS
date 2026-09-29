@@ -126,6 +126,12 @@ The single best trades made +4% to +19%. The winners still do not cover the more
   - Against the gap, every variant loses in every period: −7 to −70 bps per trade.
   - With the gap, 4 variants are positive in all three periods. These are the close-confirmed entries with breakouts by 09:59 or 10:14.
   - The best is S10-03: +15 (2019–21), +24 (2022–24) and +27 (2025) bps per trade, over 89 trades (pooled t 1.6).
+- **By gap size** (`scalps_winners/gap_size_buckets.csv`, measured in the trade's direction; SOXL's median |gap| is about 2%):
+  - A 1–3% gap is the sweet spot. All 12 variants are positive in all three periods: +8 to +58 bps per trade, win rate 52–65%, 37–118 trades each, t 1.0–3.3.
+  - Gaps larger than 3% lose in all 12 variants (−10 to −18).
+  - Trades against the gap lose in all 12 variants.
+  - Gaps of 0–1% are mixed.
+  - The bucket edges were fixed at round numbers before the results were seen, but the split itself is post-hoc.
 - **Bone Zone-like and flag-like:** no element holds up. Going with the gap does not help them either; with-gap trades lose −5 to −11 bps.
 - **Elements that do not separate winners in any setup:**
   - VWAP distance, relative volume, EMA9/21 trend, time of day.

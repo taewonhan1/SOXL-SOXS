@@ -252,6 +252,28 @@ def gap_alignment(ctx) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def gap_size_buckets(ctx) -> pd.DataFrame:
+    """Hitchhiker-like variants by the size of the opening gap in the trade's direction (% of the prior
+    close; buckets fixed at round numbers around SOXL's median |gap| of ~2%)."""
+    L = ctx["SOXL"]
+    gap = (L.o0 / L.pc - 1) * 100
+    edges, labels = [-np.inf, -1, 0, 1, 3, np.inf], ["against >1%", "against 0-1%", "with 0-1%", "with 1-3%", "with >3%"]
+    rows = []
+    for f in sorted((C.RESEARCH_DATA / "trades" / "study10_hitchhiker").glob("S10-*.parquet")):
+        if "skipped" in f.stem:
+            continue
+        tr = pd.read_parquet(f)
+        tr = tr[tr["date"] <= LAST_DAY].copy()
+        tr["period"] = C.period_of(tr["date"])
+        tr["bucket"] = pd.cut(tr["s"].to_numpy() * gap[tr["d"].to_numpy().astype(int)], edges, labels=labels)
+        for b, g0 in tr.groupby("bucket", observed=True):
+            for per, g in [(p, g0[g0["period"] == p]) for p in ("pre", "dev", "val")] + [("all", g0)]:
+                mu, t, _ = C.cluster_t(g["net_B"].to_numpy(), g["date"].to_numpy()) if len(g) else (np.nan, np.nan, 0)
+                rows.append({"variant": f.stem, "gap_in_trade_direction": b, "period": per, "n": len(g),
+                             "mean_net_B": mu, "t": t, "win_rate": float((g["net_B"] > 0).mean()) if len(g) else np.nan})
+    return pd.DataFrame(rows)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     ctx = C.Context()
@@ -269,6 +291,8 @@ def main() -> None:
     wins.to_csv(OUT / "winners_losers.csv", index=False, float_format="%.4f")
     gal = gap_alignment(ctx)
     gal.to_csv(OUT / "gap_alignment.csv", index=False, float_format="%.4f")
+    gsz = gap_size_buckets(ctx)
+    gsz.to_csv(OUT / "gap_size_buckets.csv", index=False, float_format="%.4f")
     pd.set_option("display.width", 250)
     pd.set_option("display.max_columns", 40)
     print("== winners and losers\n" + wins.round(2).to_string(index=False))
@@ -283,6 +307,9 @@ def main() -> None:
     print("\n== out-of-sample models (fitted on dev only)\n" + oos.round(3).to_string(index=False))
     print("\n== with vs against the opening gap (mean net bps per trade)\n" +
           gal.pivot_table(index=["variant", "group"], columns="period", values="mean_net_B").round(1).to_string())
+    print("\n== Hitchhiker-like: gap size in the trade's direction (mean net bps, all periods)\n" +
+          gsz[gsz["period"] == "all"].pivot_table(index="variant", columns="gap_in_trade_direction",
+                                                  values="mean_net_B", observed=True).round(1).to_string())
     print(f"\ntests: {len(uni)} | hold up: {int(uni['holds_up'].sum())} | wrote {OUT.relative_to(ROOT)}/")
 
 
