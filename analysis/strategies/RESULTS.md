@@ -172,18 +172,20 @@ Script: `scripts/research/trend_days.py`. Outputs: `trend_days/`.
   | Condition | Share of trend days | Other days |
   |---|---|---|
   | High recent-volatility regime (SOXL's 20-day median range in its top third) | 35% | 10% in the calmest third |
-  | QQQ below its 50-day average | 34% | 14% above it |
+  | QQQ below its 50-day average | 36% | 14% above it |
   | Wide first-15-minute range | 35% | — |
   | Heavy pre-market volume or range | 27–33% | — |
   | Big early drive or heavy first-15-minute volume | 28–31% | — |
 
-- **The breakout does better in all three periods under only one condition:** QQQ below its 50-day average. It made +14 / +39 / +172 against −5 / +23 / +12 when QQQ was above.
+- **The breakout does better in all three periods under only one condition:** QQQ below its 50-day average. It made +8 / +39 / +172 against −2 / +23 / +12 when QQQ was above.
+  - The 2019–21 difference is small and rests on about ten January-2019 trades.
+  - An earlier version of this analysis counted early-2019 sessions, which had no 50-day history yet, as "below". The average is now taken from QQQ's daily history back to 2010.
 - **The other conditions** raise the odds of a trend day, but the breakout's result under them was negative in 2019–21.
 - **Combined detector:** an L2 logistic model fitted on two periods and scored on the third.
-  - Out-of-sample AUC for trend days is 0.66–0.69 at 09:30 and 0.68–0.72 at 09:45.
-  - Its top third of days holds 33–36% trend days, against 9–10% in its bottom third.
-  - The breakout on the top third made +41 bps per trade (t 2.0), against +5 to +9 on the rest.
-  - That is not uniform by period. With the 09:30 model the top third was positive in every period (+18 / +35 / +100), but it lost to the bottom third in 2022–24. With the 09:45 model it was −8 in 2019–21.
+  - Out-of-sample AUC for trend days is 0.66–0.70 at 09:30 and 0.69–0.73 at 09:45.
+  - Its top third of days holds 33–37% trend days, against 9–10% in its bottom third.
+  - The breakout on the top third made +40 to +45 bps per trade (t 2.0–2.1), against +4 to +10 on the rest.
+  - That is not uniform by period. With the 09:30 model the top third was positive in every period (+10 / +36 / +98), but it lost to the bottom third in 2022–24. With the 09:45 model it was −15 in 2019–21.
 - **Status:** post-hoc. The QQQ-below-50-day filter repeats an earlier exploratory finding, so it is not independent confirmation.
 
 ## What is being tracked forward

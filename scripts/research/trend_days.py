@@ -18,6 +18,7 @@ import pandas as pd
 
 from runlib import ROOT  # noqa: I001
 from scalp_winners import _auc, _logit_l2
+from soxlab import data as sdata
 from soxlab.research import common as C
 from soxlab.research import rules as R
 
@@ -52,6 +53,14 @@ def _lag(x: np.ndarray, k: int) -> np.ndarray:
     return np.concatenate([np.full(k, np.nan), x[:-k]])
 
 
+def qqq_above_ma50(dates) -> np.ndarray:
+    """1 if QQQ's prior close is above the mean of the 50 closes ending with it, else 0 (known before the open).
+    Uses the daily history from 2010, so early-2019 sessions are classified too."""
+    q = sdata.load_daily("QQQ", True)["c"]
+    above = (q > q.rolling(50).mean()).where(q.rolling(50).count() == 50)
+    return above.shift(1).reindex(dates).astype(float).to_numpy()
+
+
 def day_table(ctx) -> pd.DataFrame:
     L, X, N, Q = ctx["SOXL"], ctx["SOXX"], ctx["NVDA"], ctx["QQQ"]
     df = pd.DataFrame(index=ctx.dates)
@@ -76,8 +85,7 @@ def day_table(ctx) -> pd.DataFrame:
     df["prev_range_rel"] = _lag(rp, 1) / med20
     df["prev_soxx_move_abs_pct"] = _lag(a, 1) * 100
     df["vol_regime_range20_pct"] = med20 * 100
-    q_ma50 = pd.Series(Q.off).shift(1).rolling(50, min_periods=40).mean().to_numpy()
-    df["qqq_above_50dma"] = (Q.pc > q_ma50).astype(float)
+    df["qqq_above_50dma"] = qqq_above_ma50(ctx.dates)
     df["soxx_ret20_abs_pct"] = np.abs(X.pc / _lag(X.pc, 20) - 1) * 100
     df["soxx_ret5_abs_pct"] = np.abs(X.pc / _lag(X.pc, 5) - 1) * 100
     ev = pd.read_csv(C.RESEARCH_DIR / "output" / "event_calendar.csv", parse_dates=["date"]).set_index("date")

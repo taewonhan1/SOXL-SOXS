@@ -1,5 +1,5 @@
 model,target,auc_pre,auc_dev,auc_val,largest_weights
-at 09:30,trend,0.6855,0.6546,0.6683,"vol_regime_range20_pct +0.52, gap_atr -0.35, pm_range_pct +0.34, prev_soxx_move_abs_pct -0.28, prev_range_rel +0.24, gap_abs_pct +0.17"
-at 09:30,medium_or_trend,0.6401,0.6193,0.5787,"vol_regime_range20_pct +0.40, pm_range_pct +0.19, fomc_day +0.19, qqq_above_50dma -0.18, prev_range_rel +0.13, soxx_ret20_abs_pct -0.06"
-at 09:45,trend,0.7216,0.6840,0.7037,"vol_regime_range20_pct +0.45, or15_range_pct +0.30, gap_atr -0.30, prev_soxx_move_abs_pct -0.29, pm_range_pct +0.26, prev_range_rel +0.20"
-at 09:45,medium_or_trend,0.6839,0.6363,0.6219,"vol_regime_range20_pct +0.39, rvol15 +0.23, fomc_day +0.20, pm_volume_rel -0.19, soxx_drive15_abs_pct +0.17, qqq_above_50dma -0.16"
+at 09:30,trend,0.6950,0.6604,0.6667,"vol_regime_range20_pct +0.51, pm_range_pct +0.33, gap_atr -0.33, prev_soxx_move_abs_pct -0.28, prev_range_rel +0.23, gap_abs_pct +0.16"
+at 09:30,medium_or_trend,0.6450,0.6208,0.5769,"vol_regime_range20_pct +0.40, fomc_day +0.19, qqq_above_50dma -0.19, pm_range_pct +0.19, prev_range_rel +0.13, soxx_ret20_abs_pct -0.06"
+at 09:45,trend,0.7304,0.6887,0.7018,"vol_regime_range20_pct +0.45, prev_soxx_move_abs_pct -0.29, gap_atr -0.28, or15_range_pct +0.28, pm_range_pct +0.26, prev_range_rel +0.20"
+at 09:45,medium_or_trend,0.6875,0.6374,0.6218,"vol_regime_range20_pct +0.39, rvol15 +0.23, fomc_day +0.20, pm_volume_rel -0.19, soxx_drive15_abs_pct +0.17, qqq_above_50dma -0.17"

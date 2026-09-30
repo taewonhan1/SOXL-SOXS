@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from runlib import ROOT  # noqa: I001
+from soxlab import data as sdata
 from soxlab.research import common as C
 from soxlab.research import rules as R
 
@@ -21,17 +22,24 @@ RULES = {"S3-01": "study3_opening_range_breakout", "S8-01": "study8_execution",
          "S4-02": "study4_noise_boundary", "S4-04": "study4_noise_boundary", "S1-06": "study1_late_day_fade"}
 
 
+def qqq_above_ma50(dates) -> np.ndarray:
+    """1 if QQQ's prior close is above the mean of the 50 closes ending with it, else 0 (known before the open).
+    Uses the daily history from 2010, so early-2019 sessions are classified too."""
+    q = sdata.load_daily("QQQ", True)["c"]
+    above = (q > q.rolling(50).mean()).where(q.rolling(50).count() == 50)
+    return above.shift(1).reindex(dates).astype(float).to_numpy()
+
+
 def day_conditions(ctx) -> pd.DataFrame:
     L, X, Q = ctx["SOXL"], ctx["SOXX"], ctx["QQQ"]
     n = len(ctx.dates)
     soxx_ret20 = X.pc / np.concatenate([np.full(20, np.nan), X.pc[:-20]]) - 1
-    q_ma50 = pd.Series(Q.off).shift(1).rolling(50, min_periods=40).mean().to_numpy()
     rng20 = pd.Series(L.range_pct).shift(1).rolling(20, min_periods=10).median().to_numpy()
     gap_atr = np.abs(L.o0 - L.pc) / L.atr_prev
     v15 = np.nansum(L.p.v[:, :15], axis=1)
     rvol15 = v15 / R._prior_window_stat(v15, 14, np.mean, 7)
     soxx_oc = X.last_c / X.o0 - 1
-    df = pd.DataFrame({"soxx_ret20": soxx_ret20, "qqq_above_ma50": Q.pc > q_ma50, "soxl_range20": rng20,
+    df = pd.DataFrame({"soxx_ret20": soxx_ret20, "qqq_above_ma50": qqq_above_ma50(ctx.dates), "soxl_range20": rng20,
                        "gap_atr": gap_atr, "rvol15": rvol15, "soxx_open_close": soxx_oc}, index=ctx.dates)
     df["d"] = np.arange(n)
     return df
@@ -40,7 +48,8 @@ def day_conditions(ctx) -> pd.DataFrame:
 def bucketize(df: pd.DataFrame) -> pd.DataFrame:
     b = pd.DataFrame(index=df.index)
     b["semis_trend_20d"] = pd.qcut(df["soxx_ret20"], 3, labels=["down", "flat", "up"])
-    b["qqq_vs_50dma"] = np.where(df["qqq_above_ma50"], "above", "below")
+    b["qqq_vs_50dma"] = pd.Series(np.where(df["qqq_above_ma50"] == 1, "above", "below"),
+                                  index=df.index).where(df["qqq_above_ma50"].notna())
     b["vol_regime"] = pd.qcut(df["soxl_range20"], 3, labels=["calm", "normal", "wild"])
     b["gap_size"] = pd.cut(df["gap_atr"], [-np.inf, 0.25, 0.75, np.inf], labels=["small", "medium", "large"])
     b["early_volume"] = pd.cut(df["rvol15"], [-np.inf, 1.0, 1.5, np.inf], labels=["<1x", "1-1.5x", ">=1.5x"])
