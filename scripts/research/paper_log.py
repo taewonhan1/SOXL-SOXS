@@ -14,6 +14,7 @@ Tracked rules (no rule passed the pre-registered bar; these are the near-misses 
   S1-06  late-day fade, |SOXX| >= 1%, exit at the official close (regime watch)
   S13-A  final breakout rules (REGISTRY.md): skip breaks against a >1% gap, range stop, 11:00 time stop, hold to 15:55
   S13-B  S13-A without the 11:00 time stop
+It also prints the S15 kill-switch state (mean of the last 60 S3-01 signals; S15 = S3-01, see REGISTRY.md).
 
 Usage:
   python scripts/research/paper_log.py                  # all sessions since the last logged one
@@ -48,6 +49,18 @@ RULES = {
     "S13-A": (orb_intents, False, "switch", dict(filt="F1", stop_kind="OR", exit_="HOLD"), dict(time_stop=(89, 0.0))),
     "S13-B": (orb_intents, False, "switch", dict(filt="F1", stop_kind="OR", exit_="HOLD")),
 }
+
+
+def kill_switch_state(log: pd.DataFrame, w: int = 60) -> tuple[float, bool, int]:
+    """S15 kill switch (REGISTRY.md): mean case-B net of the last ``w`` S3-01 signals, backtest history before the
+    forward start plus logged forward signals. ON when the mean is > 0."""
+    hist = pd.read_parquet(C.RESEARCH_DATA / "trades" / "study3_opening_range_breakout" / "S3-01.parquet")
+    parts = [hist[hist["date"] < pd.Timestamp(FORWARD_START)][["date", "net_B"]]]
+    if len(log) and "net_B_bps" in log:
+        f = log[(log["rule"] == "S3-01") & log["net_B_bps"].notna()]
+        parts.append(pd.DataFrame({"date": pd.to_datetime(f["date"]), "net_B": f["net_B_bps"].astype(float)}))
+    x = pd.concat(parts, ignore_index=True).sort_values("date")["net_B"].to_numpy()[-w:]
+    return float(x.mean()), bool(x.mean() > 0), len(x)
 
 
 def refresh_data(end: str) -> None:
@@ -98,6 +111,9 @@ def main() -> None:
                          "rule": rid, "inst": "SOXS", "side": 1, "signal": "bear", "exit_reason": "skipped: SOXS < $10"})
     new = pd.DataFrame(rows)
     print(new.round(2).to_string(index=False) if len(new) else "no trades in the window")
+    ks_log = pd.concat([log, new], ignore_index=True) if not (a.dry_run or new.empty) else log
+    mu, on, n = kill_switch_state(ks_log)
+    print(f"S15 kill switch: last {n} S3-01 signals average {mu:+.1f} bps -> {'ON (take signals)' if on else 'OFF (paper-track only)'}")
     if a.dry_run or new.empty:
         return
     out = pd.concat([log, new], ignore_index=True)

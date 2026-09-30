@@ -13,6 +13,10 @@ running. Every number below comes from the per-study CSVs in this folder.
 - None survives the Benjamini–Hochberg correction across all 94. The smallest q is 0.58, against a required 0.10. Within Studies 1–8 alone it is 0.43.
 - The **2026 holdout (Jan–Sep 2026) has not been opened for any rule.** It is still available as a one-time test.
 - **Independent test on 2011–2018** (downloaded later; no rule had seen it). The breakout, noise-boundary and late-day-fade rules all lost money after costs there, and so did the best combination picked on 2019–2025. Their intraday momentum edge is specific to the post-2019 period (see "Best-combination search and the 2011–2018 test").
+- **The 2026 holdout has now been opened, once**, for the final strategy S15 (the plain 15-minute breakout).
+  - It failed the pre-registered test: −1.9 bps per trade after costs (case Q −1.3), over 143 trades.
+  - The kill-switch version lost −65 bps per trade.
+- **Conclusion:** no rule found in this project has a demonstrated edge on data it was not fitted to.
 
 **The 1-minute momentum scalps (Studies 10–12, 24 variants) fail differently from the near-misses: they have no edge before costs.**
 - In validation, Bone Zone-like and flag-like entries on SOXL's 1-minute chart capture −10 to +3 bps gross per trade on average.
@@ -284,6 +288,30 @@ Scripts: `scripts/research/orb_best.py` (search, and the one-time `--deep` test)
 
 **Conclusion:** no rule in this project made money after costs in both eras. SOXL's intraday momentum is positive before costs in both, but it only beat costs after 2019, when it was stronger and trading was cheaper. Any live use of the breakout is a bet that the post-2019 conditions continue. The 2026 holdout test and forward paper trading are the checks on that.
 
+## Final strategy S15 and the 2026 holdout test (opened once)
+
+Script: `scripts/research/holdout_test.py`. Outputs: `holdout_2026/`. The rules and pass criteria were registered in REGISTRY.md (commit c715100) before the holdout was opened.
+
+| Rule, 2026-01-02 → 2026-09-25 | Trades | Win rate | Net per trade (case B) | t | Case Q | Gross |
+|---|---|---|---|---|---|---|
+| **S15 = plain 15-minute breakout (primary)** | 143 | 43% | **−1.9 bps** | −0.06 | −1.3 | +4.0 |
+| S15-K (60-signal kill switch) | 60 | 37% | −65.5 | −1.29 | −64.9 | −59.4 |
+| S8-01 (bearish = short SOXL) | 184 | 41% | −18.9 | −0.60 | −18.1 | −13.1 |
+| S4-02 / S4-04 (noise-boundary momentum) | 103 / 56 | 31% / 36% | +2.7 / +6.4 | 0.14 / 0.25 | +2.9 / +6.3 | +7.7 / +11.3 |
+| S13-A / S14-A | 81 / 76 | 35% / 34% | −9.4 / −6.8 | −0.26 / −0.19 | −8.8 / −5.9 | −3.7 / −1.1 |
+
+- **Verdict: S15 fails.** Its registered pass criterion was case B ≥ 0 and case Q ≥ 0.
+- **2026 was not a quiet year.** 31% of days were trend days and 28% were medium days, yet the breakout only broke even before costs.
+- **Month to month it swung widely:** −105 bps per trade in February, +132 in March, −127 in April.
+- **The kill switch was on for 42% of 2026 signals**, including the losing April, and it is off at the end of the holdout.
+
+**Overall:**
+- The breakout's 2019–2025 edge did not appear in 2011–2018 or in 2026.
+- The filtered and optimised variants did no better out of sample.
+- The only rules that were positive in 2026 (noise-boundary momentum, t 0.1–0.25) lost in 2011–2018.
+- On this evidence, none of the tested intraday rules is a demonstrated edge for real money.
+- They stay in the forward paper log so any change can be seen.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -327,6 +355,7 @@ Scripts: `scripts/research/orb_best.py` (search, and the one-time `--deep` test)
 - `orb_conditions/`: exploratory take/skip conditions for the 15-minute breakout, and SOXS vs short SOXL on the same bearish signals.
 - `orb_strategy/`: stop/target/management design grid for the breakout, and the final S13 rules.
 - `orb_best/`: 480-combination search on 2019–2025, the one-time 2011–2018 test, and the deep-history diagnostics.
+- `holdout_2026/`: the one-time 2026 holdout test of S15 and the context rules (summary, S15 by month, trades, verdict).
 - `output/`: the supplementary spread table and the event calendar.
 - Trade-level files: `data/research/trades/` (gitignored, reproducible).
 - Re-run a study: `cd scripts/research && python run_studyN.py`, then `python evaluate_all.py`.

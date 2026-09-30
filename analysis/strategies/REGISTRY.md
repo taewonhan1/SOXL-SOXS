@@ -595,3 +595,12 @@ Details: RESULTS.md and `orb_best/`.
 - **Primary: S15.** It passes if its case-B mean net per trade is ≥ 0 **and** its case-Q mean net is ≥ 0. Case Q uses real NBBO fills for entries and exits.
 - **Also reported, for context only** (they do not change the verdict): S15-K, S8-01, S4-02, S4-04, S13-A and S14-A.
 - **Reported alongside:** trades, win rate, t, results by month, and the share of trend, medium and quiet days in 2026.
+
+**Holdout outcome (opened once on 2026-09-30):** S15 **FAIL**.
+
+| Rule | Trades | Win rate | Case B net per trade | t | Case Q net per trade |
+|---|---|---|---|---|---|
+| S15 | 143 | 43% | −1.9 bps | −0.06 | −1.3 bps |
+| S15-K | 60 | 37% | −65 bps | — | — |
+
+Context rules, case B net per trade: S8-01 −19, S4-02 +3, S4-04 +6, S13-A −9, S14-A −7. Details: `holdout_2026/`.

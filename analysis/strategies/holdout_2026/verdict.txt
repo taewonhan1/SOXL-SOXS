@@ -1,0 +1,1 @@
+S15 holdout 2026-01-02..2026-09-25: FAIL; case B -1.94 bps, case Q -1.26 bps, 143 trades, win rate 0.434

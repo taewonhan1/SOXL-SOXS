@@ -1,6 +1,9 @@
 # SOXL/SOXS 15-minute breakout: playbook (Strategy S13)
 
-**Status: not proven, and it failed an independent test on older data.**
+**Status: failed both independent tests. Not recommended for real money.**
+- **Jan–Sep 2026 (sealed data, opened once):** the plain breakout, S15, made −0.02% per trade after costs over 143 trades. That is break-even before costs and fails the pre-registered test.
+  - The version below (S13-A) made −0.09%.
+  - The kill-switch version made −0.65%.
 - The rules were designed on 2019 → Sep 2024 and checked on Oct 2024 → Dec 2025.
 - **2011–2018 (new data, never used for design):** this strategy lost −0.16% per trade, and the plain breakout lost −0.12%.
   - The momentum edge before costs was a third of today's.
