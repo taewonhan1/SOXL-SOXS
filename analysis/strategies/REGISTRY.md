@@ -573,3 +573,25 @@ No statistical test. See the plan.
 | S13-A | −16 bps | — | 1 of 8 |
 
 Details: RESULTS.md and `orb_best/`.
+
+## Final strategy S15 and the one-time 2026 holdout test (registered 2026-09-30, before the holdout is opened)
+
+**Why this definition:** the independent 2011–2018 test showed that the filters and exits picked on 2019–2025 did not generalise. The final strategy is therefore the plain rule, plus a kill switch.
+
+**S15 (primary) = S3-01 exactly.** All levels are on SOXL's regular-session 1-minute chart.
+1. H and L are the high and low of bars 0..14.
+2. The trigger is the first bar from bar 15 on (up to bar n_min − 7) that closes above H or below L. One signal per day.
+3. Entry at the next bar's open.
+   - Bullish: buy SOXL.
+   - Bearish: buy SOXS if its unadjusted prior close is ≥ $10; otherwise skip.
+4. The stop is the other side of the range: L for bullish, H for bearish (SOXS mirrored).
+5. Exit at the open of bar n_min − 5 (15:55). No filters, no time stop, no target, no stop moves.
+
+**S15-K (secondary) = S15 plus a kill switch.**
+- Take signal i only if the mean case-B net result of the previous 60 S15 signals, counted whether traded or not, is > 0.
+- Signals are always tracked, even while the switch is off, so the switch can turn back on.
+
+**Holdout test.** Run once: 2026-01-02 → 2026-09-25, all trades whose date falls in that window.
+- **Primary: S15.** It passes if its case-B mean net per trade is ≥ 0 **and** its case-Q mean net is ≥ 0. Case Q uses real NBBO fills for entries and exits.
+- **Also reported, for context only** (they do not change the verdict): S15-K, S8-01, S4-02, S4-04, S13-A and S14-A.
+- **Reported alongside:** trades, win rate, t, results by month, and the share of trend, medium and quiet days in 2026.
