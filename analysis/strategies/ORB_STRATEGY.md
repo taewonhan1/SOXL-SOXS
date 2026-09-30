@@ -1,7 +1,13 @@
 # SOXL/SOXS 15-minute breakout: playbook (Strategy S13)
 
-**Status: not proven yet.**
+**Status: not proven, and it failed an independent test on older data.**
 - The rules were designed on 2019 → Sep 2024 and checked on Oct 2024 → Dec 2025.
+- **2011–2018 (new data, never used for design):** this strategy lost −0.16% per trade, and the plain breakout lost −0.12%.
+  - The momentum edge before costs was a third of today's.
+  - Spreads were two to three times wider.
+  - Trend days were half as common.
+- **Treat this as a bet that the post-2019 conditions continue.** Those conditions are frequent trend days and cheap trading. The extra filters (gap filter, 11:00 stop) did not help in 2011–2018, so the plain breakout is just as defensible.
+- A simple kill switch reduced the damage in both eras: stop trading while the last 60 signals average ≤ 0, and keep paper-tracking the signals so you can restart.
 - The one-time test on the sealed Jan–Sep 2026 data and forward paper trading are still to come.
 - The locked definition is in [REGISTRY.md](REGISTRY.md) (Strategy S13).
 - The evidence is in [RESULTS.md](RESULTS.md) and `orb_strategy/`.

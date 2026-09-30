@@ -562,3 +562,14 @@ No statistical test. See the plan.
 - Window: 2011-06-01 → 2018-12-31, case B, with SOXL/SOXS spreads measured from NBBO samples for those years (2–3× today's).
 - Reported: S14-A, the next four combinations, S14-B, and the baselines S3-01 (unfiltered) and S13-A.
 - S14-A **holds up** if its mean net per trade is > 0 and at least 5 of the 8 calendar years (2011 partial) are positive.
+
+**Deep-test outcome (2011-06-01 → 2018-12-31, run once on 2026-09-30):** S14-A did **not** hold up.
+
+| Rule | Mean net per trade | t | Positive years |
+|---|---|---|---|
+| S14-A | −16 bps | −1.5 | 2 of 8 |
+| S14-B | −5 bps | — | 3 of 8 |
+| S3-01 | −12 bps | — | 0 of 8 |
+| S13-A | −16 bps | — | 1 of 8 |
+
+Details: RESULTS.md and `orb_best/`.

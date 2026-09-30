@@ -12,6 +12,7 @@ running. Every number below comes from the per-study CSVs in this folder.
 - None meets criteria 1–5.
 - None survives the Benjamini–Hochberg correction across all 94. The smallest q is 0.58, against a required 0.10. Within Studies 1–8 alone it is 0.43.
 - The **2026 holdout (Jan–Sep 2026) has not been opened for any rule.** It is still available as a one-time test.
+- **Independent test on 2011–2018** (downloaded later; no rule had seen it). The breakout, noise-boundary and late-day-fade rules all lost money after costs there, and so did the best combination picked on 2019–2025. Their intraday momentum edge is specific to the post-2019 period (see "Best-combination search and the 2011–2018 test").
 
 **The 1-minute momentum scalps (Studies 10–12, 24 variants) fail differently from the near-misses: they have no edge before costs.**
 - In validation, Bone Zone-like and flag-like entries on SOXL's 1-minute chart capture −10 to +3 bps gross per trade on average.
@@ -246,6 +247,43 @@ Playbook: [ORB_STRATEGY.md](ORB_STRATEGY.md). Definition: [REGISTRY.md](REGISTRY
   - The breakout-volume filter did not add to the gap filter.
 - **Win rate:** no configuration reached a 55% win rate on the design sample. This breakout's win rate stays at about 40–50%, and its profit comes from the size of trend-day winners.
 
+## Best-combination search and the 2011–2018 test
+
+Scripts: `scripts/research/orb_best.py` (search, and the one-time `--deep` test) and `deep_diagnostics.py`. Outputs: `orb_best/`.
+- **Deep-history data:** minute bars from 2010–2018 (`download_deep_history.py`) and NBBO spread samples for SOXL/SOXS in 2011–2018.
+- **Search:** 480 combinations of everything considered, on 2019–2025, with the selection rule fixed in advance:
+  - range: 15, 20 or 30 minutes;
+  - filters: gap direction, pre-market direction, breakout-minute volume;
+  - stop at the range, or capped at 4%;
+  - time stop: none, 10:30, 11:00 or 12:00;
+  - exit: hold, or half off at 2R;
+  - bearish execution: SOXS or short SOXL.
+- **The pick (S14-A):** 15-minute range, trade only when the pre-market moved in the break's direction, stop capped at 4%, 12:00 time stop, hold to 15:55.
+  - 2019–2025: +46 / +47 / +56 bps per trade by period, t 3.65.
+  - It was registered before the deep test.
+
+**2011-06 → 2018 (never used before), case B with that era's measured spreads:**
+
+| Rule | Trades a year | Win rate | Net per trade | t | Positive years |
+|---|---|---|---|---|---|
+| S14-A (the pick) | 67 | 34% | −16 bps | −1.5 | 2 of 8 |
+| S14-B (high win rate) | 68 | 45% | −5 | −0.4 | 3 of 8 |
+| Plain 15-minute breakout (S3-01) | 237 | 43% | −12 | −2.0 | 0 of 8 |
+| S13-A | 165 | 34% | −16 | −2.7 | 1 of 8 |
+| Noise-boundary momentum, k = 1.0 / 1.5 | 226 / 135 | 33% / 34% | −10 / −10 | −2.5 / −2.0 | 1 of 8 / 2 of 8 |
+| Late-day fade (S1-06) | 96 | 35% | −28 | −8.1 | 0 of 8 |
+
+**Why:**
+- **The edge before costs was about three times smaller.** The plain breakout made +10 bps gross in 2011–2018, against +30 in 2019–2025. Noise-boundary momentum made +9 against +25.
+- **Costs were more than twice as high:** 21 bps per round trip, against 9. Measured half-spreads were 5–10 bps then, against 1–3 now.
+- **Trend days were rarer.** They made up 10% of breakout trades, against 22%. SOXL's median daily range was 3.6–4.9% in 2012–2017, against 6–10% in 2020–2025.
+- **The breakout itself still worked on trend days** (+345 bps a trade), but it lost on the far more common quiet days.
+- **The filters and exits picked on 2019–2025 did not generalise.** S14-A's gross in 2011–2018 was +4.5 bps, against +10 for the plain rule.
+- **No volatility-regime cut-off rescues 2011–2018.** The plain breakout lost in every bucket of SOXL's trailing 20-day range.
+- **A performance switch** (trade only while the previous 60 signals averaged > 0) made 2019–2025 better (+36 bps per trade, against +21) and halved the 2011–2018 loss in total (−104%, against −207%), but its trades there still averaged −20 bps.
+
+**Conclusion:** no rule in this project made money after costs in both eras. SOXL's intraday momentum is positive before costs in both, but it only beat costs after 2019, when it was stronger and trading was cheaper. Any live use of the breakout is a bet that the post-2019 conditions continue. The 2026 holdout test and forward paper trading are the checks on that.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -288,6 +326,7 @@ Playbook: [ORB_STRATEGY.md](ORB_STRATEGY.md). Definition: [REGISTRY.md](REGISTRY
 - `trend_days/`: exploratory trend/medium-day analysis: rules by day type, breakout entry timing, pre-open and 09:45 conditions, and the out-of-sample trend-day detector.
 - `orb_conditions/`: exploratory take/skip conditions for the 15-minute breakout, and SOXS vs short SOXL on the same bearish signals.
 - `orb_strategy/`: stop/target/management design grid for the breakout, and the final S13 rules.
+- `orb_best/`: 480-combination search on 2019–2025, the one-time 2011–2018 test, and the deep-history diagnostics.
 - `output/`: the supplementary spread table and the event calendar.
 - Trade-level files: `data/research/trades/` (gitignored, reproducible).
 - Re-run a study: `cd scripts/research && python run_studyN.py`, then `python evaluate_all.py`.
