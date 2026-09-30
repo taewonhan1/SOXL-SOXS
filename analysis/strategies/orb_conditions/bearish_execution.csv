@@ -1,0 +1,9 @@
+period,signals,soxs_net,short_soxl_net,soxs_cost,short_soxl_cost,soxs_win,short_soxl_win
+pre,179,-23.0573,-23.8978,8.6042,12.6100,0.4190,0.4190
+dev,248,7.3950,11.1124,8.4145,9.7578,0.4516,0.4556
+val,81,60.0125,76.5407,8.7347,8.1754,0.4444,0.4444
+all,508,5.0545,9.2086,8.5324,10.5105,0.4390,0.4409
+pre (SOXS < $10: short SOXL only),175,,10.1261,,,,0.4743
+dev (SOXS < $10: short SOXL only),109,,0.0325,,,,0.3761
+val (SOXS < $10: short SOXL only),61,,28.8799,,,,0.3770
+all (SOXS < $10: short SOXL only),345,,10.2530,,,,0.4261

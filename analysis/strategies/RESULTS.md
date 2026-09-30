@@ -188,6 +188,46 @@ Script: `scripts/research/trend_days.py`. Outputs: `trend_days/`.
   - That is not uniform by period. With the 09:30 model the top third was positive in every period (+10 / +36 / +98), but it lost to the bottom third in 2022–24. With the 09:45 model it was −15 in 2019–21.
 - **Status:** post-hoc. The QQQ-below-50-day filter repeats an earlier exploratory finding, so it is not independent confirmation.
 
+## Exploratory: when to take the 15-minute breakout
+
+Script: `scripts/research/orb_conditions.py`. Outputs: `orb_conditions/`.
+- Scope: every S3-01 trade, described by what was known when its trigger bar closed. 2019–2025 only.
+- About 50 buckets were examined, so single buckets can look good by chance.
+
+**Better or worse than the rest in all three periods** (net bps per trade, 2019–21 / 2022–24 / 2025):
+
+| Signal | Condition | Result | Rest |
+|---|---|---|---|
+| Take | QQQ below its 50-day average | +8 / +39 / +172 | −2 / +23 / +12 |
+| Take | Breakout-minute volume ≥ 3× normal for that minute (60% winners, about 21 trades a year) | +84 / +54 / +612 | — |
+| Skip | Break against a gap larger than 1% (36% of trades) | −49 / +12 / +44 | +29 / +41 / +52 |
+| Skip | Breakout-minute volume < 1.5× normal (54% of trades) | −20 / +25 / +13 | +19 / +37 / +114 |
+
+**Stable, but not better than the rest in every period:**
+- Pre-market moved the same way as the break: +44 / +46 / +46. Opposite: −44 / +12 / +53.
+- A 1–3% gap in the break's direction: +42 / +43 / +43.
+- Chip-earnings reaction days: +61 / +32 / +45.
+
+**No consistent effect:** trigger time, opening-range size, how far the trigger bar closed beyond the range, NVDA/QQQ direction at the trigger, weekday, and CPI/jobs or FOMC days.
+
+**Filters applied:**
+
+| Filter | 2019–21 | 2022–24 | 2025 | Pooled | Trades a year | 7-year total |
+|---|---|---|---|---|---|---|
+| All breaks, as tested | +0 | +30 | +49 | +21 (t 2.1) | about 200 | +296% |
+| Skip breaks against a >1% gap | +29 | +40 | +51 | +38 (t 3.1) | about 128 | +338% |
+| Only when the pre-market moved the same way | +44 | +46 | +46 | +45 (t 3.2) | about 103 | +328% |
+| Skip both skip conditions | +45 | +39 | +109 | +51 (t 2.7) | about 63 | +227% |
+
+The 7-year total is the sum of per-trade results, in % of one position.
+
+**Bearish execution on the same signals** (days SOXS ≥ $10):
+- Buy SOXS: +5 bps per trade (−23 / +7 / +60).
+- Short SOXL: +9 (−24 / +11 / +77).
+- Shorting SOXL also trades the 345 signals skipped while SOXS was under $10. Those made +10 per trade.
+
+**Status:** post-hoc. The gap and pre-market direction effect matches the Hitchhiker-like finding: trades that go with the overnight move do better. That is two setups agreeing, but it still needs a test on unseen data.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -228,6 +268,7 @@ Script: `scripts/research/trend_days.py`. Outputs: `trend_days/`.
 - `scalps_breakdown/`: Studies 10–12 by side, entry time, year, cost case and exit reason, plus `setup_geometry.csv`.
 - `scalps_winners/`: exploratory winner-vs-loser analysis for Studies 10–12: per-feature tests, gap alignment and out-of-sample models.
 - `trend_days/`: exploratory trend/medium-day analysis: rules by day type, breakout entry timing, pre-open and 09:45 conditions, and the out-of-sample trend-day detector.
+- `orb_conditions/`: exploratory take/skip conditions for the 15-minute breakout, and SOXS vs short SOXL on the same bearish signals.
 - `output/`: the supplementary spread table and the event calendar.
 - Trade-level files: `data/research/trades/` (gitignored, reproducible).
 - Re-run a study: `cd scripts/research && python run_studyN.py`, then `python evaluate_all.py`.
