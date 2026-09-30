@@ -141,6 +141,51 @@ The single best trades made +4% to +19%. The winners still do not cover the more
 - **Combined model:** using all elements, fitted on 2022–24 only, it does not pick winners in 2019–21 or 2025. AUC is 0.45–0.61, where 0.5 is a coin flip.
 - **Status:** these findings are post-hoc. A gap-direction Hitchhiker needs its own pre-registered test on unseen data: the sealed 2026 holdout, or forward trades.
 
+## Exploratory: trend and medium days
+
+Script: `scripts/research/trend_days.py`. Outputs: `trend_days/`.
+- Coverage: 2019–2025 only. Nothing here was pre-registered.
+- Day type is the SOXX open→close move: quiet < 1%, medium 1–2%, trend ≥ 2%. It is known only after the close.
+- Mix of days: trend 16–27%, medium 26–30%, quiet 44–57%, depending on the period.
+
+**What made money on each day type** (net bps per trade, 2019–2025):
+
+| Rule | Trend days | Medium days | Quiet days |
+|---|---|---|---|
+| 15-min opening-range breakout (S3-01) | **+361** (79% winners) | +41 (63%) | −144 (24%) |
+| Same, bearish = short SOXL (S8-01) | **+398** | +45 | −149 |
+| Noise-boundary momentum (S4-02) | +173 | −18 | −89 |
+| Hitchhiker-like (S10-05 / S10-07) | +42 / +44 | −19 / −17 | −36 / −41 |
+| Flag-like (S12-01) | +15 | −7 | −16 |
+| Bone Zone-like (S11-01) | −1 | −7 | −14 |
+| Late-day fade (S1-06) | −47 | −16 | +49 |
+
+- **Direction:** on trend days the breakout's first break points the right way 85% of the time. On medium days it is 79%, and on quiet days 61%.
+- **Entry time:**
+  - On trend days, the earliest breaks (09:45–10:00) are the best: +388 bps, 81% winners.
+  - On medium days, later breaks are the best: +77 (10:00–10:30) and +137 (10:30–12:00), against +17 for 09:45–10:00.
+- **Medium days by period:** the breakout's result on medium days is +82 (2019–21), −4 (2022–24) and +50 (2025).
+
+**What is knowable in advance.** `trend_days/conditions.csv` gives the share of trend days and the breakout's result per condition and period.
+- **More trend days in all three periods:**
+
+  | Condition | Share of trend days | Other days |
+  |---|---|---|
+  | High recent-volatility regime (SOXL's 20-day median range in its top third) | 35% | 10% in the calmest third |
+  | QQQ below its 50-day average | 34% | 14% above it |
+  | Wide first-15-minute range | 35% | — |
+  | Heavy pre-market volume or range | 27–33% | — |
+  | Big early drive or heavy first-15-minute volume | 28–31% | — |
+
+- **The breakout does better in all three periods under only one condition:** QQQ below its 50-day average. It made +14 / +39 / +172 against −5 / +23 / +12 when QQQ was above.
+- **The other conditions** raise the odds of a trend day, but the breakout's result under them was negative in 2019–21.
+- **Combined detector:** an L2 logistic model fitted on two periods and scored on the third.
+  - Out-of-sample AUC for trend days is 0.66–0.69 at 09:30 and 0.68–0.72 at 09:45.
+  - Its top third of days holds 33–36% trend days, against 9–10% in its bottom third.
+  - The breakout on the top third made +41 bps per trade (t 2.0), against +5 to +9 on the rest.
+  - That is not uniform by period. With the 09:30 model the top third was positive in every period (+18 / +35 / +100), but it lost to the bottom third in 2022–24. With the 09:45 model it was −8 in 2019–21.
+- **Status:** post-hoc. The QQQ-below-50-day filter repeats an earlier exploratory finding, so it is not independent confirmation.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -180,6 +225,7 @@ The single best trades made +4% to +19%. The winners still do not cover the more
   - Studies 10–12: summaries also carry case S (stop-slippage stress).
 - `scalps_breakdown/`: Studies 10–12 by side, entry time, year, cost case and exit reason, plus `setup_geometry.csv`.
 - `scalps_winners/`: exploratory winner-vs-loser analysis for Studies 10–12: per-feature tests, gap alignment and out-of-sample models.
+- `trend_days/`: exploratory trend/medium-day analysis: rules by day type, breakout entry timing, pre-open and 09:45 conditions, and the out-of-sample trend-day detector.
 - `output/`: the supplementary spread table and the event calendar.
 - Trade-level files: `data/research/trades/` (gitignored, reproducible).
 - Re-run a study: `cd scripts/research && python run_studyN.py`, then `python evaluate_all.py`.
