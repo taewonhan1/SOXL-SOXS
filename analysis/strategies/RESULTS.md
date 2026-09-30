@@ -312,6 +312,25 @@ Script: `scripts/research/holdout_test.py`. Outputs: `holdout_2026/`. The rules 
 - On this evidence, none of the tested intraday rules is a demonstrated edge for real money.
 - They stay in the forward paper log so any change can be seen.
 
+## Midday trend check (S16): the first idea positive in all three eras
+
+Script: `scripts/research/midday_trend.py`. Outputs: `midday_trend/`.
+- **The rule:** at a check time, if SOXL has already moved at least k% from its open, go with the move and hold to 15:55.
+  - Up moves are bought as SOXL; down moves as SOXS.
+  - Optionally, a stop exits if SOXL gets back to its opening price.
+- **The grid:** 24 cells, fixed before running, all reported. Check at 11:00 / 12:00 / 13:00; k = 2 / 3 / 4 / 6%; stop none or at the open.
+
+| | 2011–2018 | 2019–2025 | 2026 |
+|---|---|---|---|
+| Average over all 24 cells: gross / cost / net (bps per trade) | +29 / 17 / **+12** | +15 / 9 / **+7** | +14 / 4 / **+10** |
+| Share of cells with net > 0 | 71% | 88% | 58% |
+| S16 = 11:00, ±3%, stop at the open: net (t) | **+12.9 (0.8)** | **+20.4 (1.2)** | **+18.0 (0.4)** |
+| S16: win rate / trades a year | 52% / 45 | 53% / 66 | 56% / 87 |
+
+- **Positive in all three eras:** 8 of the 24 cells.
+- **Unlike the opening breakout,** this effect was positive after costs in 2011–2018 too. It is small (+0.1–0.2% per trade), and each cell on its own is weak (t ≤ 1.3).
+- **Registered as S16** and added to the forward paper log. No untouched history remains for this rule family.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -356,6 +375,7 @@ Script: `scripts/research/holdout_test.py`. Outputs: `holdout_2026/`. The rules 
 - `orb_strategy/`: stop/target/management design grid for the breakout, and the final S13 rules.
 - `orb_best/`: 480-combination search on 2019–2025, the one-time 2011–2018 test, and the deep-history diagnostics.
 - `holdout_2026/`: the one-time 2026 holdout test of S15 and the context rules (summary, S15 by month, trades, verdict).
+- `midday_trend/`: the midday trend-check grid (24 cells × three eras).
 - `output/`: the supplementary spread table and the event calendar.
 - Trade-level files: `data/research/trades/` (gitignored, reproducible).
 - Re-run a study: `cd scripts/research && python run_studyN.py`, then `python evaluate_all.py`.

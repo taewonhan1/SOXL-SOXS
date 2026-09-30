@@ -14,6 +14,7 @@ Tracked rules (no rule passed the pre-registered bar; these are the near-misses 
   S1-06  late-day fade, |SOXX| >= 1%, exit at the official close (regime watch)
   S13-A  final breakout rules (REGISTRY.md): skip breaks against a >1% gap, range stop, 11:00 time stop, hold to 15:55
   S13-B  S13-A without the 11:00 time stop
+  S16    midday trend continuation: SOXL >= 3% from its open at 11:00 -> go with it, stop at the open, 15:55 exit
 It also prints the S15 kill-switch state (mean of the last 60 S3-01 signals; S15 = S3-01, see REGISTRY.md).
 
 Usage:
@@ -36,6 +37,7 @@ from soxlab.research import common as C
 from soxlab.research import engine as E
 from soxlab.research import rules as R
 from orb_strategy_design import orb_intents
+from midday_trend import midday_intents
 
 FORWARD_START = "2026-09-28"
 LOG = C.RESEARCH_DIR / "paper_log.csv"
@@ -48,6 +50,7 @@ RULES = {
     "S1-06": (R.s1_intents, False, "switch", dict(thr=0.01, gate=False, exit_="E3", exec_mode="switch")),
     "S13-A": (orb_intents, False, "switch", dict(filt="F1", stop_kind="OR", exit_="HOLD"), dict(time_stop=(89, 0.0))),
     "S13-B": (orb_intents, False, "switch", dict(filt="F1", stop_kind="OR", exit_="HOLD")),
+    "S16": (midday_intents, False, "switch", dict(check="11:00", k=3.0, stop="OPEN")),
 }
 
 

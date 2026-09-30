@@ -604,3 +604,22 @@ Details: RESULTS.md and `orb_best/`.
 | S15-K | 60 | 37% | −65 bps | — | — |
 
 Context rules, case B net per trade: S8-01 −19, S4-02 +3, S4-04 +6, S13-A −9, S14-A −7. Details: `holdout_2026/`.
+
+## Strategy S16: midday trend continuation (registered 2026-09-30; the forward paper log is its test)
+
+All levels are on SOXL's regular-session 1-minute chart.
+1. **Check** at the close of the 10:59 candle (11:00): SOXL's move from its 09:30 open.
+2. **Entry** at the 11:00 candle's open.
+   - If the move is ≥ +3%, buy SOXL.
+   - If the move is ≤ −3%, buy SOXS, if its prior close is ≥ $10; otherwise skip.
+3. **Stop:** exit if SOXL trades back to its 09:30 opening price.
+4. **Exit:** otherwise at the 15:55 candle's open.
+
+**Evidence** (`scripts/research/midday_trend.py`, `midday_trend/`)
+- A 24-cell grid was fixed before running and every cell is reported: check time 11:00 / 12:00 / 13:00, move 2 / 3 / 4 / 6%, stop none or at the open. It was run on 2011-06 → 2018, 2019 → 2025 and 2026-01 → 09 at once.
+- **All 24 cells, averaged:** +12 / +7 / +10 bps per trade by era. 71% / 88% / 58% of cells are positive. Before costs: +29 / +15 / +14.
+- **This cell:** +12.9 / +20.4 / +18.0 bps per trade (t 0.8 / 1.2 / 0.4). Win rate 52% / 53% / 56%. 45 / 66 / 87 trades a year. Pooled: +17 bps over 866 trades.
+
+**Status**
+- No untouched history is left for this rule family.
+- The test is the forward paper log from 2026-09-28. Judge it after 60 trades.
