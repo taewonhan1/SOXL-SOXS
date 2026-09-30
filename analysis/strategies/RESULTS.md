@@ -331,6 +331,72 @@ Script: `scripts/research/midday_trend.py`. Outputs: `midday_trend/`.
 - **Unlike the opening breakout,** this effect was positive after costs in 2011–2018 too. It is small (+0.1–0.2% per trade), and each cell on its own is weak (t ≤ 1.3).
 - **Registered as S16** and added to the forward paper log. No untouched history remains for this rule family.
 
+## Live trend odds: what the move so far says about the rest of the day
+
+Script: `scripts/research/intraday_trend_odds.py`. Outputs: `intraday_trend_odds/`.
+- **Why:** a trend day (SOXX open→close ≥ 2%) is only known at the close. This is the version you can read live: SOXL's move from its 09:30 open at a given time, and what followed.
+- **Setup:**
+  - Checks at 10:00, 10:30, 11:00, 11:30, 12:00, 13:00 and 14:00 (bar closes).
+  - Move buckets: 1–2 / 2–3 / 3–4 / 4–6 / ≥ 6%, either way.
+  - "Going with it" means entering at the next minute's open (SOXL for up, SOXS for down) and exiting at 15:55, with case B costs. It runs with no stop, and again with a stop if SOXL gets back to its open.
+- **Coverage:** all 35 cells are reported for 2011–2018, 2019–2025 and 2026, in `odds.csv` (per era) and `pooled.csv`. Exploratory: the grid was fixed, but no rule was selected in advance.
+
+**Chance the day ends as a trend day in the move's direction** (pooled 2011–2026; per era in `odds.csv`):
+
+| Move from the open | 10:00 | 10:30 | 11:00 | 12:00 | 13:00 | 14:00 |
+|---|---|---|---|---|---|---|
+| 1–2% | 10% | 6% | 5% | 4% | 3% | 2% |
+| 2–3% | 16% | 12% | 11% | 8% | 5% | 3% |
+| 3–4% | 26% | 25% | 23% | 14% | 11% | 8% |
+| 4–6% | 43% | 44% | 37% | 34% | 31% | 30% |
+| ≥ 6% | 69% | 69% | 71% | 80% | 82% | 82% |
+
+**Riding the move to 15:55 barely pays.** From any check, SOXL keeps going the same way to the close 50–63% of the time. Net per trade going with the move, pooled, no stop (bold = positive in all three eras):
+
+| Move from the open | 10:00 | 10:30 | 11:00 | 12:00 | 13:00 | 14:00 |
+|---|---|---|---|---|---|---|
+| 1–2% | −0.11% | −0.14% | −0.09% | +0.00% | +0.06% | −0.10% |
+| 2–3% | +0.22% | +0.05% | +0.11% | +0.04% | −0.10% | −0.12% |
+| 3–4% | **+0.38%** | **+0.44%** | **+0.24%** | −0.01% | −0.13% | −0.05% |
+| 4–6% | +0.36% | +0.12% | −0.10% | +0.13% | +0.07% | **+0.10%** |
+| ≥ 6% | −0.04% | −0.00% | **+0.13%** | +0.02% | +0.24% | +0.12% |
+
+- **Positive in all three eras:** 7 of the 35 cells with no stop, and 4 of 35 with the stop at the open. About 4 would be expected by chance.
+- **The one coherent cluster is a 3–4% move between 10:00 and 11:00.** With the stop at the open, 2011–2018 / 2019–2025 / 2026:
+
+  | Check | Net per trade by era | Note |
+  |---|---|---|
+  | 10:00 | +0.19% / +0.43% / +0.27% | |
+  | 10:30 | +0.29% / +0.36% / +0.88% | Pooled: +0.36% a trade, 52% winners, t 2.1, about 23 trades a year |
+  | 11:00 | +0.27% / +0.44% / −0.95% | 2026 is 13 trades |
+
+  It was found by looking at 70 cells, so it is a lead, not proof.
+- **Chasing a move of 6% or more at 10:00–10:30 does not pay.** 69% of those days end as trend days that way, yet riding from there averages 0%. The trend-day label comes mostly from the move already made.
+- **1–2% moves carry no information:** 48–51% winners, and the average is about zero (−0.14% to +0.15%).
+
+**How much is left on the days that do end as trend days** (SOXL, medians, `trend_day_move_done.csv`, ranges over 2011–2018 and 2019–2025):
+
+| Check | 10:00 | 10:30 | 11:00 | 11:30 | 12:00 | 13:00 | 14:00 |
+|---|---|---|---|---|---|---|---|
+| Share of the day's move already done | 26–27% | 38–41% | 46% | 54–56% | 60–62% | 68–71% | 79–81% |
+| SOXL move still to come | 5.5–6.2% | 4.6–5.0% | 4.1–4.5% | 3.8% | 3.2% | 2.5–2.6% | 1.6–1.7% |
+
+- 2026 was front-loaded: 44% of the move was done by 10:00 and 62% by 11:00.
+- **So on real trend days there is plenty left at 10:30–11:00. The problem is picking them.** At that point only a quarter to a half of the days showing a 3–6% move become trend days, and the rest give back.
+
+**Flipping sides when SOXL closes back through its open** (`flip_at_open.csv`):
+- The setup: SOXL first moves k% one way, then a 1-minute close lands back through the open by 14:30.
+- The trade: take the other side at the next open and hold to 15:55, with no stop.
+
+| First move | 2011–2018 | 2019–2025 | 2026 |
+|---|---|---|---|
+| 2% | −0.21% (47% win, 56 a year) | +0.29% (53%, 77 a year) | −0.99% (39%, 103 a year) |
+| 3% | −0.34% (48%, 22 a year) | −0.01% (52%, 42 a year) | −0.31% (44%, 66 a year) |
+| 4% | −0.05% (51%, 6 a year) | −0.38% (51%, 22 a year) | +0.35% (46%, 36 a year) |
+
+- The open cross is not a reliable switch signal. A move that fails usually leads to chop, not a trend the other way.
+- **Status:** exploratory. S16 (11:00, ≥ 3%, stop at the open) remains the forward-tracked version of this idea.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -342,6 +408,10 @@ Script: `scripts/research/midday_trend.py`. Outputs: `midday_trend/`.
 | S4-02 | Noise-boundary momentum, k = 1.0, trailing exits checked at half-hour marks. |
 | S4-04 | Noise-boundary momentum, k = 1.5, trailing exits checked at half-hour marks. |
 | S1-06 | Late-day fade on days SOXX moved ≥ 1%, exit at the official close. Regime watch only. |
+| S13-A / S13-B | The final breakout rules, with and without the 11:00 time stop (ORB_STRATEGY.md). |
+| S16 | Midday trend check: at 11:00, SOXL ≥ 3% from its open, go with it, stop at the open, exit 15:55. |
+
+The log also prints the S15 kill-switch state: ON while the last 60 S3-01 signals average > 0.
 
 **Judging rules**
 - Each rule is judged after 60 trades.
@@ -376,6 +446,7 @@ Script: `scripts/research/midday_trend.py`. Outputs: `midday_trend/`.
 - `orb_best/`: 480-combination search on 2019–2025, the one-time 2011–2018 test, and the deep-history diagnostics.
 - `holdout_2026/`: the one-time 2026 holdout test of S15 and the context rules (summary, S15 by month, trades, verdict).
 - `midday_trend/`: the midday trend-check grid (24 cells × three eras).
+- `intraday_trend_odds/`: live odds by check time and move so far (`odds.csv` per era, `pooled.csv`), how much of trend days' move is done at each check, and the flip-at-the-open test.
 - `output/`: the supplementary spread table and the event calendar.
 - Trade-level files: `data/research/trades/` (gitignored, reproducible).
 - Re-run a study: `cd scripts/research && python run_studyN.py`, then `python evaluate_all.py`.
