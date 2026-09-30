@@ -521,3 +521,44 @@ No statistical test. See the plan.
 **Reference, design and check periods** (case B, 2019–2025, bearish via SOXS):
 - S13-A: +25 / +40 / +60 bps per trade in pre / dev / val. Win rate 40%, max drawdown −48% of one position.
 - S13-B: +29 / +40 / +51. Win rate 48%, max drawdown −62%.
+
+## Strategy S14: best-combination breakout (registered 2026-09-30, before the 2011–2018 test)
+
+**How it was picked**
+- `orb_best.py` searched 480 combinations on 2019-01-02 → 2025-12-31, using a rule fixed in its docstring before running:
+  - keep combinations averaging at least 60 trades a year;
+  - take the highest worst-period mean net per trade across pre, dev and val;
+  - break ties by pooled t.
+- Combinations:
+  - range: 15, 20 or 30 minutes;
+  - filter: none, gap, pre-market, gap + volume, or pre-market + volume;
+  - stop: at the range, or at the range capped at 4%;
+  - time stop: none, 10:30, 11:00 or 12:00;
+  - exit: hold, or half off at 2R;
+  - bearish execution: SOXS or short SOXL.
+- 2011-06-01 → 2018-12-31 has not been used by any rule. The 2026 holdout stays sealed.
+
+**S14-A (the pick):** `15|PM|CAP4|1200|HOLD|SOXS`. All levels are on SOXL's regular-session 1-minute chart.
+1. **Range:** H and L = the high and low of bars 0..14 (09:30–09:44).
+2. **Trigger:** the first bar from bar 15 on that closes above H (bullish) or below L (bearish). One signal per day.
+3. **Filter:** trade only if SOXL's last pre-market trade (04:00–09:29) was above its prior official close for an up-break, or below it for a down-break. A day with no pre-market trade gets no trade.
+4. **Entry:** the next bar's open.
+   - Bullish: buy SOXL.
+   - Bearish: buy SOXS if its unadjusted prior close is ≥ $10; otherwise skip.
+5. **Stop:** the other side of the range, but never more than 4% from the SOXL entry price.
+6. **Time stop:** at the close of bar 149 (12:00), exit at the next bar's open if the trade is not in profit on SOXL's chart.
+7. **Exit:** otherwise at the open of bar n_min − 5 (15:55). No target and no stop moves.
+
+**S14-B (high win rate):** `20|PM|RNG|none|HOLD|SOXS`. This is S14-A with a 20-minute range (bars 0..19), the stop at the other side of the range with no cap, and no time stop.
+
+**Results on the search data** (2019–2025, case B):
+
+| Rule | Trades a year | Win rate | Net bps per trade (pre / dev / val) | Pooled t | Max drawdown |
+|---|---|---|---|---|---|
+| S14-A | 103 | 44% | +46 / +47 / +56 | 3.65 | −39% |
+| S14-B | 102 | 51% | +41 / +38 / +41 | 2.80 | −57% |
+
+**Deep test (run once, next):**
+- Window: 2011-06-01 → 2018-12-31, case B, with SOXL/SOXS spreads measured from NBBO samples for those years (2–3× today's).
+- Reported: S14-A, the next four combinations, S14-B, and the baselines S3-01 (unfiltered) and S13-A.
+- S14-A **holds up** if its mean net per trade is > 0 and at least 5 of the 8 calendar years (2011 partial) are positive.
