@@ -5,7 +5,8 @@ The microstructure study's table (analysis/microstructure/output/cost_model_half
 2022-2026 for SOXL, SOXS, SOXX, SMH, NVDA, QQQ, TQQQ, SQQQ. The research plan also needs:
   * 2019-2021 for the pre-sample checks (SOXL traded at ~$100-600 before its 2021 15:1 split, with
     spreads of tens of cents, so 2022 cents cannot be reused), and
-  * SPY 2019-2026 for the Study 4 sanity check.
+  * SPY 2019-2026 for the Study 4 sanity check, and
+  * SOXL/SOXS 2011-2018 for the deep-history test of the final breakout strategy (orb_best.py).
 
 Sample: 8 regular (non-half) trading days per year x 15 three-minute NBBO windows per day
 (09:30, 09:45, 10:00, 10:30, ..., 15:00, 15:30, 15:50). Spreads are time-weighted within each
@@ -33,7 +34,8 @@ WINDOWS = ["09:30", "09:45", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30
            "14:00", "14:30", "15:00", "15:30", "15:50"]
 TARGET_MD = ["01-15", "02-26", "04-15", "05-27", "07-15", "08-26", "10-15", "11-25"]
 JOBS_SPEC = ([(t, y) for t in ["SOXL", "SOXS", "SOXX", "SMH", "NVDA", "QQQ", "TQQQ", "SPY"] for y in (2019, 2020, 2021)]
-             + [("SPY", y) for y in (2022, 2023, 2024, 2025, 2026)])
+             + [("SPY", y) for y in (2022, 2023, 2024, 2025, 2026)]
+             + [(t, y) for t in ["SOXL", "SOXS"] for y in range(2011, 2019)])      # deep-history test (orb_best.py)
 
 
 def bucket_of(hhmm: str) -> tuple[str, str]:
