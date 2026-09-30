@@ -181,3 +181,35 @@ def test_level_entry_and_scale_out_legs(ctx):
     assert len(m) == 1 and int(m.iloc[0]["xb"]) == e + 30
     assert np.isclose(m.iloc[0]["net_B"], (exs[0].iloc[0]["net_B"] + exs[1].iloc[0]["net_B"]) / 2)
     assert np.isclose(m.iloc[0]["gross_bps"], (m.iloc[0]["xp"] / m.iloc[0]["ep"] - 1) * 1e4)
+
+
+def test_stop_steps_and_time_stop(ctx):
+    td = ctx["SOXL"]
+    p = td.p
+    days = np.flatnonzero(td.full & (td.period == "dev"))
+    # a long that first gains >= 1R, then trades back to its entry before the original stop
+    e, found = 60, None
+    for d in days[:300]:
+        ep = p.o[d, e]
+        stop = ep * (1 - 0.004)
+        hh, ll = p.h[d, e:300], p.l[d, e:300]
+        up = np.flatnonzero(hh >= ep + (ep - stop))
+        if not up.size or (ll[:up[0] + 1] <= stop).any():
+            continue
+        back = np.flatnonzero(ll[up[0] + 1:] <= ep)
+        if back.size:
+            found = (d, ep, stop, up[0] + 1 + back[0])
+            break
+    assert found is not None
+    d, ep, stop, k2 = found
+    it = E.make_intents([{"d": d, "sig": e - 1, "e": e, "s": 1, "stop": stop, "tx": 300}])
+    be = E.simulate(td, it, stop_steps=((1.0, 0.0),)).iloc[0]
+    assert be["reason"] == "stop_moved" and int(be["xb"]) == e + k2
+    assert np.isclose(be["xp"], min(ep, p.o[d, e + k2]))          # at the entry, or the open if it gapped through
+    assert E.simulate(td, it).iloc[0]["reason"] != "stop_moved"
+    # time stop: not in profit at bar tb's close -> out at the next open
+    e, tb = 40, 89
+    d = next(d for d in days if p.c[d, tb] < p.o[d, e] and (p.l[d, e:tb + 1] > p.o[d, e] * 0.5).all())
+    it = E.make_intents([{"d": d, "sig": e - 1, "e": e, "s": 1, "stop": p.o[d, e] * 0.5, "tx": 300}])
+    ts = E.simulate(td, it, time_stop=(tb, 0.0)).iloc[0]
+    assert ts["reason"] == "time_stop" and int(ts["xb"]) == tb + 1 and np.isclose(ts["xp"], p.o[d, tb + 1])

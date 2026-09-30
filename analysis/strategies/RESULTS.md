@@ -228,6 +228,24 @@ The 7-year total is the sum of per-trade results, in % of one position.
 
 **Status:** post-hoc. The gap and pre-market direction effect matches the Hitchhiker-like finding: trades that go with the overnight move do better. That is two setups agreeing, but it still needs a test on unseen data.
 
+## Strategy S13: final breakout rules (locked before the 2026 holdout)
+
+Playbook: [ORB_STRATEGY.md](ORB_STRATEGY.md). Definition: [REGISTRY.md](REGISTRY.md), Strategy S13. Design grid: `orb_strategy/`.
+- **How it was chosen:** stops, targets and trade management were picked from 144 configurations on 2019 → Sep 2024 only. Oct 2024 → Dec 2025 served as the check.
+- **Rules:**
+  - Skip breaks against a gap larger than 1%.
+  - Stop at the other side of the 15-minute range.
+  - Exit at 11:00 if the trade is not in profit.
+  - Otherwise hold to 15:55.
+  - No target and no stop moves.
+- **Results, bearish via SOXS:** +25 / +40 / +60 bps per trade (2019–21 / 2022–24 / Oct 2024–Dec 2025). Win rate 40%, worst drawdown −48% of one position. The as-tested breakout had 47% and −146%.
+- **What the design data rejected:**
+  - Profit targets (2R, 3R, half at 2R) lowered results, most of all in the check period.
+  - Break-even stop moves cost about 4–5 bps per trade.
+  - A mid-range stop cut the win rate to 32%.
+  - The breakout-volume filter did not add to the gap filter.
+- **Win rate:** no configuration reached a 55% win rate on the design sample. This breakout's win rate stays at about 40–50%, and its profit comes from the size of trend-day winners.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -269,6 +287,7 @@ The 7-year total is the sum of per-trade results, in % of one position.
 - `scalps_winners/`: exploratory winner-vs-loser analysis for Studies 10–12: per-feature tests, gap alignment and out-of-sample models.
 - `trend_days/`: exploratory trend/medium-day analysis: rules by day type, breakout entry timing, pre-open and 09:45 conditions, and the out-of-sample trend-day detector.
 - `orb_conditions/`: exploratory take/skip conditions for the 15-minute breakout, and SOXS vs short SOXL on the same bearish signals.
+- `orb_strategy/`: stop/target/management design grid for the breakout, and the final S13 rules.
 - `output/`: the supplementary spread table and the event calendar.
 - Trade-level files: `data/research/trades/` (gitignored, reproducible).
 - Re-run a study: `cd scripts/research && python run_studyN.py`, then `python evaluate_all.py`.

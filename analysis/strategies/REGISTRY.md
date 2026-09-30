@@ -488,3 +488,36 @@ period was checked, to make sure each rule trades often enough to be tested.
 ## Study 9: monitors and paper log
 
 No statistical test. See the plan.
+
+## Strategy S13: the 15-minute breakout, final rules (locked 2026-09-30, before any 2026 holdout look)
+
+**How the rules were chosen**
+- Entry filters come from the exploratory condition analysis (`orb_conditions.py`, 2019–2025).
+- Stops, targets and trade management were chosen on 2019-01-02 → 2024-09-30 only. `orb_strategy_design.py` searched 144 configurations.
+- Oct 2024 – Dec 2025 was used only as a check.
+- The primary rule was picked on the design sample:
+  - Among configurations with the same design-sample mean, it had the smaller design drawdown.
+  - Targets, break-even stop moves, a tighter (mid-range) stop and the breakout-volume filter did not improve the design sample.
+
+**S13-A (primary).** All levels are on SOXL's regular-session 1-minute chart.
+1. **Range:** H and L = the high and low of bars 0..14 (09:30–09:44).
+2. **Trigger:** the first bar from bar 15 on that closes above H (bullish) or below L (bearish). One signal per day.
+3. **Skip:** the break goes against an opening gap of more than 1%. Gap = SOXL's open ÷ its prior official close − 1, signed by the break direction, and skip if it is < −1%.
+4. **Entry:** the next bar's open.
+   - Bullish: buy SOXL.
+   - Bearish: buy SOXS if its unadjusted prior close is ≥ $10; otherwise skip.
+   - A SOXS exit mirrors the SOXL chart as in §0.
+5. **Stop:** L for bullish trades, H for bearish trades.
+6. **Time stop:** at the close of bar 89 (11:00), exit at the next bar's open if the trade is not in profit on SOXL's chart. Trades entered after 11:00 are unaffected.
+7. **Exit:** otherwise at the open of bar n_min − 5 (15:55, or 12:55 on half-days). No profit target and no stop moves.
+
+**S13-B (secondary):** S13-A without the time stop (step 6).
+
+**Holdout test** (one time, only when the user asks): 2026-01-02 → 2026-09-25, case B.
+- S13-A passes if its mean net per trade is ≥ 0. S13-B is reported alongside, with S3-01 and S8-01 as references.
+- Case Q (real NBBO fills) is computed for the holdout trades.
+- Forward paper trading of S13-A and S13-B starts 2026-09-28 (`paper_log.py`).
+
+**Reference, design and check periods** (case B, 2019–2025, bearish via SOXS):
+- S13-A: +25 / +40 / +60 bps per trade in pre / dev / val. Win rate 40%, max drawdown −48% of one position.
+- S13-B: +29 / +40 / +51. Win rate 48%, max drawdown −62%.

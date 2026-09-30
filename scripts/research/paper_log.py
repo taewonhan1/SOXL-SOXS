@@ -12,6 +12,8 @@ Tracked rules (no rule passed the pre-registered bar; these are the near-misses 
   S4-02  noise-boundary momentum, k = 1.0, trailing checks at half-hour marks
   S4-04  noise-boundary momentum, k = 1.5, trailing checks at half-hour marks
   S1-06  late-day fade, |SOXX| >= 1%, exit at the official close (regime watch)
+  S13-A  final breakout rules (REGISTRY.md): skip breaks against a >1% gap, range stop, 11:00 time stop, hold to 15:55
+  S13-B  S13-A without the 11:00 time stop
 
 Usage:
   python scripts/research/paper_log.py                  # all sessions since the last logged one
@@ -32,6 +34,7 @@ from soxlab import data as sdata
 from soxlab.research import common as C
 from soxlab.research import engine as E
 from soxlab.research import rules as R
+from orb_strategy_design import orb_intents
 
 FORWARD_START = "2026-09-28"
 LOG = C.RESEARCH_DIR / "paper_log.csv"
@@ -42,6 +45,8 @@ RULES = {
     "S4-02": (R.s4_trades, True, "switch", dict(k=1.0, check="H")),
     "S4-04": (R.s4_trades, True, "switch", dict(k=1.5, check="H")),
     "S1-06": (R.s1_intents, False, "switch", dict(thr=0.01, gate=False, exit_="E3", exec_mode="switch")),
+    "S13-A": (orb_intents, False, "switch", dict(filt="F1", stop_kind="OR", exit_="HOLD"), dict(time_stop=(89, 0.0))),
+    "S13-B": (orb_intents, False, "switch", dict(filt="F1", stop_kind="OR", exit_="HOLD")),
 }
 
 
@@ -74,9 +79,9 @@ def main() -> None:
         return
     cms = {"A": C.cost_model(0.0), "B": C.cost_model(C.COMMISSION_B)}
     rows = []
-    for rid, (fn, is_tr, mode, prm) in RULES.items():
+    for rid, (fn, is_tr, mode, prm, *sim_kw) in RULES.items():
         obj = fn(ctx, sig="SOXL", **prm)
-        tr = obj if is_tr else E.simulate(ctx["SOXL"], obj)
+        tr = obj if is_tr else E.simulate(ctx["SOXL"], obj, **(sim_kw[0] if sim_kw else {}))
         ex, sk = E.execute(tr, ctx, mode=mode)
         ex = E.add_costs(ex, cms)
         ex = ex[(ex["date"] >= pd.Timestamp(start)) & (ex["date"] <= pd.Timestamp(a.end))]

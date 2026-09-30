@@ -57,7 +57,12 @@ def make_intents(rows: list[dict]) -> pd.DataFrame:
 # simulation on the signal chart
 # --------------------------------------------------------------------------------------
 def simulate(td, intents: pd.DataFrame, exit_long: np.ndarray | None = None,
-             exit_short: np.ndarray | None = None, one_position: bool = True) -> pd.DataFrame:
+             exit_short: np.ndarray | None = None, one_position: bool = True, stop_steps=(),
+             time_stop: tuple | None = None) -> pd.DataFrame:
+    """``stop_steps``: ((trigger_R, new_stop_R), ...) -- once the best favourable excursion reaches trigger_R x R,
+    the stop moves to entry + new_stop_R x R from the next bar on (R = |entry - initial stop|).
+    ``time_stop``: (bar, min_R) -- if the trade's open profit at that bar's close is below min_R x R, exit at the
+    next bar's open."""
     p = td.p
     o, h, l, c = p.o, p.h, p.l, p.c
     vwap = td.vwap if intents["trail_r"].notna().any() else None
@@ -89,10 +94,19 @@ def simulate(td, intents: pd.DataFrame, exit_long: np.ndarray | None = None,
         hh, ll, oo, cc = h[d, e:last + 1], l[d, e:last + 1], o[d, e:last + 1], c[d, e:last + 1]
         n = hh.size
         stop, tgt = float(r.stop), float(r.target)
+        R0 = abs(ep - stop) if np.isfinite(stop) else np.nan
         st = np.zeros(n, bool)
         tg = np.zeros(n, bool)
+        stop_arr = np.full(n, stop)
         if np.isfinite(stop):
-            st = (ll <= stop) if s > 0 else (hh >= stop)
+            if stop_steps and R0 > 0:
+                fav = np.maximum.accumulate((hh - ep) if s > 0 else (ep - ll))
+                for trig, new_r in stop_steps:
+                    hit = np.flatnonzero(fav >= trig * R0)
+                    if hit.size and hit[0] + 1 < n:
+                        lv, seg = ep + s * new_r * R0, stop_arr[hit[0] + 1:]
+                        stop_arr[hit[0] + 1:] = np.maximum(seg, lv) if s > 0 else np.minimum(seg, lv)
+            st = (ll <= stop_arr) if s > 0 else (hh >= stop_arr)
         if np.isfinite(tgt):
             tg = (hh >= tgt) if s > 0 else (ll <= tgt)
         if lvl_entry and n:
@@ -118,14 +132,21 @@ def simulate(td, intents: pd.DataFrame, exit_long: np.ndarray | None = None,
                 it = np.flatnonzero(cond)
                 if it.size:
                     k_tr = int(it[0])
-        k_close = min(k_sig, k_tr)
+        k_ts = n
+        if time_stop is not None and np.isfinite(R0) and R0 > 0:
+            kk = int(time_stop[0]) - e
+            if 0 <= kk < n and s * (cc[kk] - ep) < time_stop[1] * R0:
+                k_ts = kk
+        k_close = min(k_sig, k_tr, k_ts)
         xb = None
         if k_level < n and k_level <= k_close:
             k = k_level
             xb = e + k
             if st[k]:
-                gap = ((oo[k] <= stop) if s > 0 else (oo[k] >= stop)) and not (lvl_entry and k == 0)
-                xp, xk, why = (oo[k], "gap", "stop") if gap else (stop, "level", "stop")
+                lv = stop_arr[k]
+                gap = ((oo[k] <= lv) if s > 0 else (oo[k] >= lv)) and not (lvl_entry and k == 0)
+                why = "stop" if lv == stop else "stop_moved"
+                xp, xk = (oo[k], "gap") if gap else (lv, "level")
             else:
                 gap = (oo[k] >= tgt) if s > 0 else (oo[k] <= tgt)
                 xp, xk, why = (oo[k], "gap", "target") if gap else (tgt, "level", "target")
@@ -133,7 +154,8 @@ def simulate(td, intents: pd.DataFrame, exit_long: np.ndarray | None = None,
         elif k_close < n and e + k_close + 1 <= nmin - 1 and \
                 ((kind == "open" and e + k_close + 1 < tx) or (kind != "open" and e + k_close + 1 <= tx)):
             xb = e + k_close + 1
-            xp, xk, why = o[d, xb], "open", ("trail" if k_tr <= k_sig else "signal")
+            xp, xk = o[d, xb], "open"
+            why = "time_stop" if k_ts < min(k_sig, k_tr) else ("trail" if k_tr <= k_sig else "signal")
             nxt_free = xb
         if xb is None:
             xb = tx
@@ -217,7 +239,7 @@ def add_stop_slippage(tr: pd.DataFrame, cents: float = 1.0) -> pd.DataFrame:
         tr["net_S"] = []
         return tr
     slip_in = np.where(tr["e_kind"].to_numpy() == "level", cents / 100 / tr["ep_u"].to_numpy() * 1e4, 0.0)
-    stop_lvl = (tr["x_kind"].to_numpy() == "level") & (tr["reason"].to_numpy() == "stop")
+    stop_lvl = (tr["x_kind"].to_numpy() == "level") & np.isin(tr["reason"].to_numpy(), ["stop", "stop_moved"])
     slip_out = np.where(stop_lvl, cents / 100 / tr["xp_u"].to_numpy() * 1e4, 0.0)
     tr["net_S"] = tr["net_B"] - slip_in - slip_out
     return tr
@@ -435,7 +457,7 @@ def add_quote_fills(tr: pd.DataFrame, cm_b, periods=("dev", "val", "hold")) -> p
     reason = tr["reason"].to_numpy()
     exit_fill = np.where(side > 0, ex_bid, ex_ask)
     lvl = kinds == "level"
-    exit_fill = np.where(lvl & (reason == "stop"), xp_u - side * hs_x, exit_fill)
+    exit_fill = np.where(lvl & np.isin(reason, ["stop", "stop_moved"]), xp_u - side * hs_x, exit_fill)
     exit_fill = np.where(lvl & (reason == "target"), xp_u, exit_fill)
     exit_fill = np.where(kinds == "official", xp_u, exit_fill)
     gross_q = side * (exit_fill / entry_fill - 1) * 1e4
