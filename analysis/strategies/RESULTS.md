@@ -17,6 +17,7 @@ running. Every number below comes from the per-study CSVs in this folder.
   - It failed the pre-registered test: −1.9 bps per trade after costs (case Q −1.3), over 143 trades.
   - The kill-switch version lost −65 bps per trade.
 - **Conclusion:** no rule found in this project has a demonstrated edge on data it was not fitted to.
+- **The underlying effect is established; a profit after costs is not.** Going with SOXL's morning move beats picking a side at random by 0.2–0.3% a trade in each of 2011–2018, 2019–2025 and 2026 (random-direction test, p ≈ 0.002). Costs took most of that before 2026. What is left after costs (+0.07% a trade on average over 2011–2026) is not distinguishable from zero (reality check, p ≈ 0.2). See "Luck check" under "Live trend odds".
 
 **The 1-minute momentum scalps (Studies 10–12, 24 variants) fail differently from the near-misses: they have no edge before costs.**
 - In validation, Bone Zone-like and flag-like entries on SOXL's 1-minute chart capture −10 to +3 bps gross per trade on average.
@@ -361,7 +362,7 @@ Script: `scripts/research/intraday_trend_odds.py`. Outputs: `intraday_trend_odds
 | 4–6% | +0.36% | +0.12% | −0.10% | +0.13% | +0.07% | **+0.10%** |
 | ≥ 6% | −0.04% | −0.00% | **+0.13%** | +0.02% | +0.24% | +0.12% |
 
-- **Positive in all three eras:** 7 of the 35 cells with no stop, and 4 of 35 with the stop at the open. About 4 would be expected by chance.
+- **Positive in all three eras:** 7 of the 35 cells with no stop, and 4 of 35 with the stop at the open. What chance would give depends on the question (see the luck check below): about 1 if the morning direction carried no information, and about 4 if the net edge were exactly zero.
 - **The one coherent cluster is a 3–4% move between 10:00 and 11:00.** With the stop at the open, 2011–2018 / 2019–2025 / 2026:
 
   | Check | Net per trade by era | Note |
@@ -396,6 +397,26 @@ Script: `scripts/research/intraday_trend_odds.py`. Outputs: `intraday_trend_odds
 
 - The open cross is not a reliable switch signal. A move that fails usually leads to chop, not a trend the other way.
 - **Status:** exploratory. S16 (11:00, ≥ 3%, stop at the open) remains the forward-tracked version of this idea.
+
+**Luck check** (`scripts/research/luck_check.py`, `luck_check.csv`, `luck_check_by_era.csv`; 2,000 runs per null, no-stop cells). It asks two different questions:
+1. **Does the morning move's direction carry information?** Each day's side is flipped at random, with real costs and skips, and the same flip at every check time.
+2. **Does the result beat zero after costs?** White's reality check: every cell is recentred to a zero mean, days are resampled within each era, and the whole 35-cell search is redone.
+
+| Statistic | Observed | (1) Random side: typical / 95th pct / share as good | (2) Zero net edge: typical / 95th pct / share as good |
+|---|---|---|---|
+| Average net over the 35 cells | +6.8 bps | −14.5 / −2.4 / **0.2%** | 0 / +11.8 / 20% |
+| Cells positive in all three eras | 7 | 1 / 4 / **0.4%** | 4 / 10 / 20% |
+| Best cell's t (11:30, 2–3%) | 2.21 | 1.07 / 2.19 / **4.4%** | 1.98 / 3.05 / 33% |
+
+| Era | Average net, going with the move | Average net, random side (mostly costs) | What the direction is worth |
+|---|---|---|---|
+| 2011–2018 | +8.8 bps | −20.4 | **+29** |
+| 2019–2025 | +6.3 | −12.8 | **+19** |
+| 2026 | +25.9 | +5.3 | **+21** |
+
+- **The continuation is real and steady.** Going with the morning move is worth about 0.2–0.3% a trade over a random side in every era, and a random side almost never matches it (p ≈ 0.002).
+- **The profit after costs is not established.** Before 2026, costs took most of the continuation. The net that is left (+0.07% a trade over 2011–2026) would appear by luck about one time in five. The best single cell is what a 35-cell search finds by luck about one time in three.
+- **Costs are now much smaller.** In 2026 a random side about broke even, so most of the continuation was left over. If the continuation stays at its 15-year level, current costs leave roughly +0.15–0.25% a trade. That is a forecast, not a result.
 
 ## What is being tracked forward
 
@@ -446,7 +467,7 @@ The log also prints the S15 kill-switch state: ON while the last 60 S3-01 signal
 - `orb_best/`: 480-combination search on 2019–2025, the one-time 2011–2018 test, and the deep-history diagnostics.
 - `holdout_2026/`: the one-time 2026 holdout test of S15 and the context rules (summary, S15 by month, trades, verdict).
 - `midday_trend/`: the midday trend-check grid (24 cells × three eras).
-- `intraday_trend_odds/`: live odds by check time and move so far (`odds.csv` per era, `pooled.csv`), how much of trend days' move is done at each check, and the flip-at-the-open test.
+- `intraday_trend_odds/`: live odds by check time and move so far (`odds.csv` per era, `pooled.csv`), how much of trend days' move is done at each check, the flip-at-the-open test, and the luck check (`luck_check*.csv`).
 - `output/`: the supplementary spread table and the event calendar.
 - Trade-level files: `data/research/trades/` (gitignored, reproducible).
 - Re-run a study: `cd scripts/research && python run_studyN.py`, then `python evaluate_all.py`.

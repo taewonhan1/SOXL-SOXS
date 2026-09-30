@@ -1,0 +1,9 @@
+null,statistic,observed,null_median,null_95th,share_of_null_at_least_as_good
+"random direction (no information, real costs)",best_t,2.2148,1.0659,2.1860,0.0445
+"random direction (no information, real costs)",cells_positive_all_eras,7.0000,1.0000,4.0000,0.0040
+"random direction (no information, real costs)",avg_cell_net_bps,6.7668,-14.4731,-2.4289,0.0015
+"random direction (no information, real costs)",cell_1030_3to4_t,1.8668,-0.6379,0.9634,0.0045
+zero net edge (reality check bootstrap),best_t,2.2148,1.9783,3.0494,0.3335
+zero net edge (reality check bootstrap),cells_positive_all_eras,7.0000,4.0000,10.0000,0.2000
+zero net edge (reality check bootstrap),avg_cell_net_bps,6.7668,-0.0328,11.8134,0.1980
+zero net edge (reality check bootstrap),cell_1030_3to4_t,1.8668,0.0127,1.5638,0.0260
