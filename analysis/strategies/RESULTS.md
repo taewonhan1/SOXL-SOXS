@@ -17,7 +17,7 @@ running. Every number below comes from the per-study CSVs in this folder.
   - It failed the pre-registered test: −1.9 bps per trade after costs (case Q −1.3), over 143 trades.
   - The kill-switch version lost −65 bps per trade.
 - **Conclusion:** no rule found in this project has a demonstrated edge on data it was not fitted to.
-- **The underlying effect is established; a profit after costs is not.** Going with SOXL's morning move beats picking a side at random by 0.2–0.3% a trade in each of 2011–2018, 2019–2025 and 2026 (random-direction test, p ≈ 0.002). Costs took most of that before 2026. What is left after costs (+0.07% a trade on average over 2011–2026) is not distinguishable from zero (reality check, p ≈ 0.2). See "Luck check" under "Live trend odds".
+- **The underlying effect is established; a profit after costs is not.** Going with SOXL's morning move beats picking a side at random by 0.2–0.3% a trade in each of 2011–2018, 2019–2025 and 2026 (random-direction test, p ≈ 0.002). Most of it is on the SOXL side (up moves, p ≈ 0.005). SOXS on down moves paid only after moves of 3% or more. Costs took most of that before 2026. What is left after costs (+0.07% a trade on average over 2011–2026) is not distinguishable from zero (reality check, p ≈ 0.2). See "Luck check" under "Live trend odds".
 
 **The 1-minute momentum scalps (Studies 10–12, 24 variants) fail differently from the near-misses: they have no edge before costs.**
 - In validation, Bone Zone-like and flag-like entries on SOXL's 1-minute chart capture −10 to +3 bps gross per trade on average.
@@ -417,6 +417,27 @@ Script: `scripts/research/intraday_trend_odds.py`. Outputs: `intraday_trend_odds
 - **The continuation is real and steady.** Going with the morning move is worth about 0.2–0.3% a trade over a random side in every era, and a random side almost never matches it (p ≈ 0.002).
 - **The profit after costs is not established.** Before 2026, costs took most of the continuation. The net that is left (+0.07% a trade over 2011–2026) would appear by luck about one time in five. The best single cell is what a 35-cell search finds by luck about one time in three.
 - **Costs are now much smaller.** In 2026 a random side about broke even, so most of the continuation was left over. If the continuation stays at its 15-year level, current costs leave roughly +0.15–0.25% a trade. That is a forecast, not a result.
+
+**By side** (`luck_check_by_side.csv`, `luck_check_side_size_time.csv`; no stop, hold to 15:55, after costs). The signal is always SOXL's move from its 09:30 open.
+
+| Average over the 35 cells | 2011–2018 | 2019–2025 | 2026 | Random-side test |
+|---|---|---|---|---|
+| Up move → buy SOXL | +0.17% | +0.06% | +0.44% | p ≈ 0.005 |
+| Down move → buy SOXS | +0.01% | +0.08% | −0.24% | p ≈ 0.07 |
+| Fade an up move (buy SOXS) | −0.61% | −0.45% | −0.57% | |
+| Fade a down move (buy SOXL) | −0.39% | −0.24% | +0.14% | |
+
+| Per signal, checks 10:00–11:00 (win rate) | 2011–2018 | 2019–2025 | 2026 |
+|---|---|---|---|
+| Up ≥ 3% → buy SOXL | +0.12% (58%) | +0.18% (54%) | +0.60% (60%) |
+| Up 1–3% → buy SOXL | −0.01% (53%) | +0.11% (57%) | +0.64% (51%) |
+| Down ≥ 3% → buy SOXS | +0.11% (49%) | +0.27% (57%) | +0.34% (58%) |
+| Down 1–3% → buy SOXS | −0.10% (45%) | −0.12% (46%) | −1.19% (41%) |
+
+- **The established part is the SOXL side.** SOXS on its own is not established, because small down moves (1–3%) tend to bounce.
+- **Down moves of 3% or more by 10:00–11:00 did continue:** SOXS was positive in all three eras.
+- **Fading loses.** Buying SOXS into an up move lost about 0.5% a trade in every era. Buying SOXL into a down move lost before 2026.
+- **Small samples:** the 2026 down side is small (224 signals over all cells). A day counts once for each check time it qualifies at.
 
 ## What is being tracked forward
 

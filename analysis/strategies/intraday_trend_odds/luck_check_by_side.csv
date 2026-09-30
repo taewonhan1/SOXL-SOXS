@@ -1,0 +1,9 @@
+side,era,signals,win_with,avg_cell_net_with_bps,avg_cell_net_fade_bps,random_side_median_bps,share_of_random_at_least_as_good
+up move: buy SOXL,2011-2018,4361,0.5377,17.4326,-60.9193,,
+up move: buy SOXL,2019-2025,4620,0.5468,5.6998,-45.3315,,
+up move: buy SOXL,2026,577,0.5199,44.0204,-57.1199,,
+up move: buy SOXL,pooled,9558,0.5410,10.4191,-50.0065,-15.2771,0.0050
+down move: buy SOXS,2011-2018,4056,0.4544,1.1030,-39.4904,,
+down move: buy SOXS,2019-2025,2649,0.5002,8.4177,-23.5932,,
+down move: buy SOXS,2026,224,0.4732,-24.2776,13.9570,,
+down move: buy SOXS,pooled,6929,0.4725,2.3910,-26.3805,-14.2835,0.0675

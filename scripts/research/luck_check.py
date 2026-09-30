@@ -13,7 +13,10 @@ between cells. Over the 35 no-stop cells, pooled over 2011-06..2018, 2019..2025 
 A second null asks whether the NET result beats zero (not just a random side): White's reality check. Each cell's
 trades are recentred to a mean of zero (per era for the era count, pooled otherwise), days are resampled with
 replacement within each era (a day keeps all its cells, so the overlap is kept), and the statistics are recomputed.
-Writes analysis/strategies/intraday_trend_odds/luck_check.csv and luck_check_by_era.csv.
+Also split by side: up moves (buy SOXL) and down moves (buy SOXS), with the fade as a comparison, and by side x
+move size x check window.
+Writes analysis/strategies/intraday_trend_odds/luck_check.csv, luck_check_by_era.csv, luck_check_by_side.csv and
+luck_check_side_size_time.csv.
 """
 from __future__ import annotations
 
@@ -57,18 +60,18 @@ def legs(ctx, in_era: np.ndarray, cms: dict) -> list[tuple]:
     return out
 
 
-def cell_stats(data: list, eps: list, w: list | None = None, shift: np.ndarray | None = None
-               ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Per cell (check x bucket): pooled mean, pooled t, and whether the mean is > 0 in every era (>= 5 trades).
-    ``eps``: per-era day flips; ``w``: per-era day weights (bootstrap counts); ``shift``: per era x check x bucket
-    amount subtracted from every trade (recentring)."""
+def cell_stats(data: list, eps: list, w: list | None = None, shift: np.ndarray | None = None, side: int | None = None
+               ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Per cell (check x bucket): pooled mean, pooled t, whether the mean is > 0 in every era (>= 5 trades), and the
+    per-era means. ``eps``: per-era day flips; ``w``: per-era day weights (bootstrap counts); ``shift``: per era x
+    check x bucket amount subtracted from every trade (recentring); ``side``: only up (+1) or down (-1) moves."""
     n = np.zeros((len(data), len(CHECKS), NB))
     s1 = np.zeros_like(n)
     s2 = np.zeros_like(n)
     for e, (era_legs, ep) in enumerate(zip(data, eps)):
         for c, (d, b, s, up, dn) in enumerate(era_legs):
             v = np.where(s * ep[d] > 0, up, dn)
-            ok = np.isfinite(v)
+            ok = np.isfinite(v) & (True if side is None else s == side)
             bb, vv = b[ok], v[ok]
             if shift is not None:
                 vv = vv - shift[e, c, bb]
@@ -96,6 +99,49 @@ def era_cell_means(data: list) -> np.ndarray:
             cnt = np.bincount(b[ok], minlength=NB)
             out[e, c] = np.where(cnt > 0, np.bincount(b[ok], weights=v[ok], minlength=NB) / np.maximum(cnt, 1), 0)
     return out
+
+
+def by_side(data: list, ndays: list, rng) -> pd.DataFrame:
+    """Up moves (going with = buy SOXL, fading = buy SOXS) and down moves (going with = buy SOXS, fading = buy
+    SOXL) separately: average net over the cells, per era and pooled, the fade, and the random-side p-value."""
+    ones = [np.ones(k) for k in ndays]
+    rows = []
+    for side, name in ((1, "up move: buy SOXL"), (-1, "down move: buy SOXS")):
+        m_with, _, _, e_with = cell_stats(data, ones, side=side)
+        m_fade, _, _, e_fade = cell_stats(data, [-o for o in ones], side=side)
+        null = np.array([np.nanmean(cell_stats(data, [rng.choice((-1, 1), size=k) for k in ndays], side=side)[0])
+                         for _ in range(N_PERM)])
+        wins, sig = [], []
+        for era_legs in data:
+            v = np.concatenate([np.where(s > 0, up, dn)[s == side] for d, b, s, up, dn in era_legs])
+            v = v[np.isfinite(v)]
+            wins.append(float((v > 0).mean()))
+            sig.append(len(v))
+        for e, (era, _, _) in enumerate(ERAS):
+            rows.append({"side": name, "era": era, "signals": sig[e], "win_with": wins[e],
+                         "avg_cell_net_with_bps": float(np.nanmean(e_with[e])),
+                         "avg_cell_net_fade_bps": float(np.nanmean(e_fade[e]))})
+        rows.append({"side": name, "era": "pooled", "signals": sum(sig),
+                     "win_with": float(np.average(wins, weights=sig)), "avg_cell_net_with_bps": float(np.nanmean(m_with)),
+                     "avg_cell_net_fade_bps": float(np.nanmean(m_fade)), "random_side_median_bps": float(np.median(null)),
+                     "share_of_random_at_least_as_good": float((null >= np.nanmean(m_with)).mean())})
+    return pd.DataFrame(rows)
+
+
+def side_size_time(data: list) -> pd.DataFrame:
+    """Going with the move (no stop) by side, move size (1-3% / >=3%) and check window (10:00-11:00 / 11:30-14:00),
+    per era: signals (a day counts once per check it qualifies at), mean net and win rate."""
+    early = {"10:00", "10:30", "11:00"}
+    parts = []
+    for (era, _, _), era_legs in zip(ERAS, data):
+        for tname, (d, b, s, up, dn) in zip(CHECKS, era_legs):
+            v = np.where(s > 0, up, dn)
+            ok = np.isfinite(v)
+            parts.append(pd.DataFrame({"era": era, "side": np.where(s[ok] > 0, "up: buy SOXL", "down: buy SOXS"),
+                                       "move": np.where(b[ok] >= 2, ">=3%", "1-3%"),
+                                       "window": "10:00-11:00" if tname in early else "11:30-14:00", "net_bps": v[ok]}))
+    g = pd.concat(parts).groupby(["side", "move", "window", "era"])["net_bps"]
+    return pd.DataFrame({"signals": g.size(), "net_bps": g.mean(), "win": g.apply(lambda x: float((x > 0).mean()))}).reset_index()
 
 
 def main() -> None:
@@ -145,8 +191,14 @@ def main() -> None:
     by_era.to_csv(OUT / "luck_check_by_era.csv", index=False, float_format="%.4f")
     pd.set_option("display.width", 200)
     print(f"best cell: {list(CHECKS)[best[0]]} {BUCKETS[best[1]][2]}  (pooled mean {mean[best]:+.1f} bps, t {t[best]:.2f})")
+    sides = by_side(data, ndays, rng)
+    sides.to_csv(OUT / "luck_check_by_side.csv", index=False, float_format="%.4f")
+    sst = side_size_time(data)
+    sst.to_csv(OUT / "luck_check_side_size_time.csv", index=False, float_format="%.4f")
     print(res.round(3).to_string(index=False))
     print("\n" + by_era.round(1).to_string(index=False))
+    print("\n" + sides.round(3).to_string(index=False))
+    print("\n" + sst.pivot_table(index=["side", "move", "window"], columns="era", values=["net_bps", "win"]).round(2).to_string())
     print(f"\n{N_PERM} runs per null; wrote {OUT.relative_to(ROOT)}/luck_check.csv")
 
 
