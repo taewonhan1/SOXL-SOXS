@@ -778,3 +778,9 @@ For each model: test AUC, and the T1 share, mean REST and mean R in its training
 **Useful if:** as in Study T2. In both test eras, the selected rule or a model's top third has a T1 share at least 1.5× the era's base rate and a higher mean REST than the rest, in the ≥ 2% set.
 
 **Extra data downloaded after registration:** adjusted 1-minute bars from 2010-06 to 2026-09 for SPY, IWM, TLT, UUP, GLD, HYG, EWT, EWY and XLK.
+
+**Study T3 addendum (2026-10-03, before the full run).** T1 is partly determined by the move already made by 10:30. The question that matters for trading is continuation, so these are also run under the same protocol and success test:
+- the L1 logistic and LightGBM models with target **CONT = REST ≥ 2%**;
+- the pair/triple search ranked by training mean REST.
+
+A 2016–2019 dry run was used only to debug code; no study results were looked at.
