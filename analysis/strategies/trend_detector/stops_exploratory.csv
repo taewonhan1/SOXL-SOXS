@@ -1,0 +1,49 @@
+check,stop,era,selection,trades,trend_share,win,net_pct
+09:45,fixed 1.5%,test 2011-2018,all signals,937,0.1174,0.3554,-0.1019
+09:45,fixed 1.5%,test 2011-2018,detector top third,227,0.2555,0.2863,-0.1700
+09:45,fixed 1.5%,train 2019-2025,all signals,806,0.2159,0.3325,0.1771
+09:45,fixed 1.5%,train 2019-2025,detector top third,278,0.3381,0.3058,0.1093
+09:45,fixed 1.5%,test 2026,all signals,102,0.2843,0.2843,0.1976
+09:45,fixed 1.5%,test 2026,detector top third,57,0.3509,0.2982,0.3848
+09:45,SOXL open,test 2011-2018,all signals,937,0.1174,0.3778,-0.0695
+09:45,SOXL open,test 2011-2018,detector top third,227,0.2555,0.3789,0.0414
+09:45,SOXL open,train 2019-2025,all signals,806,0.2159,0.4045,0.2488
+09:45,SOXL open,train 2019-2025,detector top third,278,0.3381,0.4424,0.2420
+09:45,SOXL open,test 2026,all signals,102,0.2843,0.4118,0.4385
+09:45,SOXL open,test 2026,detector top third,57,0.3509,0.4386,0.5515
+09:45,half typical range,test 2011-2018,all signals,937,0.1174,0.4280,-0.0783
+09:45,half typical range,test 2011-2018,detector top third,227,0.2555,0.4053,-0.0086
+09:45,half typical range,train 2019-2025,all signals,806,0.2159,0.4950,0.1949
+09:45,half typical range,train 2019-2025,detector top third,278,0.3381,0.5072,0.0223
+09:45,half typical range,test 2026,all signals,102,0.2843,0.4608,0.0958
+09:45,half typical range,test 2026,detector top third,57,0.3509,0.4035,-0.1536
+09:45,none,test 2011-2018,all signals,937,0.1174,0.4824,0.0189
+09:45,none,test 2011-2018,detector top third,227,0.2555,0.4758,0.0312
+09:45,none,train 2019-2025,all signals,806,0.2159,0.5484,0.1136
+09:45,none,train 2019-2025,detector top third,278,0.3381,0.5791,-0.1550
+09:45,none,test 2026,all signals,102,0.2843,0.5294,0.3832
+09:45,none,test 2026,detector top third,57,0.3509,0.4561,-0.1878
+10:00,fixed 1.5%,test 2011-2018,all signals,1041,0.1268,0.3919,-0.0041
+10:00,fixed 1.5%,test 2011-2018,detector top third,290,0.2517,0.3586,0.0750
+10:00,fixed 1.5%,train 2019-2025,all signals,889,0.2452,0.3487,0.1952
+10:00,fixed 1.5%,train 2019-2025,detector top third,316,0.4019,0.3196,0.2131
+10:00,fixed 1.5%,test 2026,all signals,114,0.3246,0.2368,-0.2624
+10:00,fixed 1.5%,test 2026,detector top third,65,0.4154,0.2462,-0.1093
+10:00,SOXL open,test 2011-2018,all signals,1041,0.1268,0.4179,-0.0203
+10:00,SOXL open,test 2011-2018,detector top third,290,0.2517,0.4483,0.1205
+10:00,SOXL open,train 2019-2025,all signals,889,0.2452,0.4454,0.2869
+10:00,SOXL open,train 2019-2025,detector top third,316,0.4019,0.4905,0.4286
+10:00,SOXL open,test 2026,all signals,114,0.3246,0.4035,0.0891
+10:00,SOXL open,test 2026,detector top third,65,0.4154,0.5077,0.6879
+10:00,half typical range,test 2011-2018,all signals,1041,0.1268,0.4669,0.0373
+10:00,half typical range,test 2011-2018,detector top third,290,0.2517,0.4690,0.1355
+10:00,half typical range,train 2019-2025,all signals,889,0.2452,0.5006,0.2516
+10:00,half typical range,train 2019-2025,detector top third,316,0.4019,0.5127,0.4913
+10:00,half typical range,test 2026,all signals,114,0.3246,0.4649,-0.2028
+10:00,half typical range,test 2026,detector top third,65,0.4154,0.5077,0.2643
+10:00,none,test 2011-2018,all signals,1041,0.1268,0.5024,0.0277
+10:00,none,test 2011-2018,detector top third,290,0.2517,0.5276,0.0912
+10:00,none,train 2019-2025,all signals,889,0.2452,0.5456,0.1780
+10:00,none,train 2019-2025,detector top third,316,0.4019,0.5791,0.4310
+10:00,none,test 2026,all signals,114,0.3246,0.5263,0.0780
+10:00,none,test 2026,detector top third,65,0.4154,0.5538,0.6720

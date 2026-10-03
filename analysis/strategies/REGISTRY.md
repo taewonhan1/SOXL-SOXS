@@ -689,3 +689,15 @@ All levels are on SOXL's regular-session 1-minute chart.
 - SOXL trades from 09:30:00 to 10:00:00 ET for every session, aggregated per minute: tick-rule signed shares and dollars, odd-lot shares, block (≥ $250k) signed dollars, and off-exchange shares. The block and off-exchange fields are stored for later work and are not part of this search.
 
 **Correction (2026-10-03, before any Study T1 result was computed).** The input table defines 11 stage-2 inputs: I5a/I5b and I6a/I6b each count separately. So the B1 search covers all 1,023 subsets of size 1–5, not "10 inputs, 637 subsets." Everything else is unchanged.
+
+**Study T1 outcome (run once on 2026-10-03): FAIL.** No selected rule beat the move-plus-gap baseline in both test eras with mean R > 0 and at least 10 trades a year.
+
+| Check | Rule | Mean R, 2011–2018 / 2026 | Trend share, 2011–2018 / 2026 | Baseline (move + gap) mean R | Baseline trend share |
+|---|---|---|---|---|---|
+| 09:45 | B1: I2 + I6b + I8, all three (best of 6,361) | +0.14 / −0.65 | 26% / 32% | +0.12 / −0.21 | 18% / 23% |
+| 09:45 | B2 logistic, top third | −0.11 / +0.26 | 25% / 36% | | |
+| 10:00 | B1: I2 + I4 + I5b + I8 + I9 ≥ 4, stage 1 ≥ 2 (best of 6,780) | +0.24 / −0.60 | 26% / 48% | +0.03 / −0.51 | 17% / 50% |
+| 10:00 | B2 logistic, top third | +0.05 / −0.07 | 25% / 40% | | |
+
+- Logistic test AUC for trend days: 0.74 / 0.65 at 09:45 and 0.74 / 0.70 at 10:00. The detector finds trend days, but with the 1.5% stop its trades did not pay.
+- Details: RESULTS.md, "Study T1"; `trend_detector/`.

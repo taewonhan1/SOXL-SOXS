@@ -561,6 +561,65 @@ Script: `scripts/research/early_trend.py`. Outputs: `early_trend/`.
 - **Where it comes from:** the early entries carry it after 2019, but they were weak in 2011–2018 (0.04 R at 09:45).
 - **Status:** post-hoc, not forward-tested.
 
+## Study T1: early trend-day detector (registered; FAIL)
+
+Registry: REGISTRY.md, "Study T1". Scripts: `scripts/research/download_detector_data.py`, `scripts/research/trend_detector.py`, `scripts/research/trend_detector_stops.py`. Outputs: `trend_detector/`.
+- **Inputs:** five pre-open flags and eleven inputs at 09:45 and 10:00:
+  - scaled move, gap agreement, path cleanliness, VWAP side;
+  - order flow, as tick-level buyer/seller imbalance from every SOXL trade and as a bar-based version;
+  - breadth across 23 semis, and the four leaders;
+  - VIXY, semis vs QQQ, and break-and-hold of yesterday's high or low.
+- **Protocol:** fitted on 2019–2025, judged on 2011–2018 and 2026.
+- **Trade:** next-minute entry, fixed 1.5% stop, exit 15:55.
+
+**Verdict: FAIL.** The rules picked by the search and by the logistic model did not beat the simple move-plus-gap baseline in both test periods. Mean R per trade, with the registered 1.5% stop:
+
+| Check | Rule | 2011–2018 | 2019–2025 (fit) | 2026 | Trades a year |
+|---|---|---|---|---|---|
+| 09:45 | All signals (move ≥ 1%) | −0.07 | +0.12 | +0.13 | 124 / 115 / 140 |
+| 09:45 | Move + gap baseline | +0.12 | +0.36 | −0.21 | 20 / 19 / 25 |
+| 09:45 | Best search rule (gap + leaders + semis vs QQQ) | +0.14 | +0.79 | −0.65 | 9 / 10 / 16 |
+| 09:45 | Logistic, top third | −0.11 | +0.07 | +0.26 | 30 / 40 / 78 |
+| 10:00 | All signals | −0.00 | +0.13 | −0.17 | 137 / 127 / 157 |
+| 10:00 | Move + gap baseline | +0.03 | +0.24 | −0.51 | 23 / 21 / 15 |
+| 10:00 | Best search rule (5 inputs, stage 1 ≥ 2) | +0.24 | +0.73 | −0.60 | 9 / 11 / 30 |
+| 10:00 | Logistic, top third | +0.05 | +0.14 | −0.07 | 38 / 45 / 89 |
+| 10:00 | Cascade rule (3–4% with the gap), for reference | +0.27 | +0.28 | +0.38 | 8 / 10 / 12 |
+
+**The detector does find trend days.**
+- **Logistic accuracy:** AUC on unseen periods is 0.74 / 0.65 at 09:45 and 0.74 / 0.70 at 10:00 (0.5 is a coin flip). Its top third holds 25% / 40% trend days at 10:00, against 12% / 33% for all signals.
+- **Inputs that separate trend days in every era** (10:00 signals; trend-day share in the input's top vs bottom training tercile, 2011–2018 / 2019–2025 / 2026):
+
+  | Input | Top tercile | Bottom tercile |
+  |---|---|---|
+  | Breadth | 25 / 30 / 50% | 8 / 17 / 26% |
+  | Semis vs QQQ | 24 / 32 / 42% | 8 / 15 / 27% |
+  | Pre-open score 3+ vs 0–1 | 27 / 36 / 40% | 9 / 17 / 23% |
+  | Scaled move | 18 / 30 / 56% | 10 / 18 / 20% |
+  | VIXY moving against SOXL's move | 19 / 28 / 45% | 10 / 19 / 25% |
+
+- **Inputs that added little:**
+  - Tick-level order flow: 12 / 23 / 42% against 10 / 22 / 22%. It helped only in 2026.
+  - Break and hold of yesterday's high or low: 14 / 23 / 30% against 11 / 12 / 22% for a failed break.
+  - Gap agreement on its own.
+- **No input separated the trade results with the 1.5% stop.** Trend days are high-volatility days, and a fixed 1.5% stop gets hit before the trend plays out. The 10:00 search rule held 48% trend days in 2026 and still lost 0.60 R a trade.
+
+**Exploratory follow-up (post-hoc; four stops tried after the failure)** (`stops_exploratory.csv`). Logistic top third against all 10:00 signals, net % per trade, 2011–2018 / 2019–2025 / 2026:
+
+| Stop | Top third | All signals |
+|---|---|---|
+| Fixed 1.5% | +0.08 / +0.21 / −0.11 | −0.00 / +0.20 / −0.26 |
+| SOXL's open | **+0.12 / +0.43 / +0.69** | −0.02 / +0.29 / +0.09 |
+| Half the typical daily range | +0.14 / +0.49 / +0.26 | +0.04 / +0.25 / −0.20 |
+| None | +0.09 / +0.43 / +0.67 | +0.03 / +0.18 / +0.08 |
+
+- **With room to move, the detector's picks were positive in every era and beat all signals.**
+- **Per dollar risked they are weak:** the open stop averages 3.1–4.1% away, giving +0.07 / +0.15 / +0.08 R. That is below the 10:30 rule with a 1.5% stop (0.15 / 0.20 / 0.14 R).
+- **The evidence is thin:** t is 0.6 / 1.8 / 1.5, and the worst trade was −16.6%.
+- **At 09:45,** only the open stop kept the top third positive in every era (+0.04 / +0.24 / +0.55).
+
+**Conclusion:** extra data identifies trend days better than price alone. Breadth, semis vs QQQ, VIXY and the pre-open flags carry the most information. But in these tests it did not produce more profit per unit of risk than the simple 10:30 rule. The most practical use is as confirmation in a live scanner: favor days with broad participation and semis leading QQQ.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -610,6 +669,7 @@ The log also prints the S15 kill-switch state: ON while the last 60 S3-01 signal
 - `orb_best/`: 480-combination search on 2019–2025, the one-time 2011–2018 test, and the deep-history diagnostics.
 - `holdout_2026/`: the one-time 2026 holdout test of S15 and the context rules (summary, S15 by month, trades, verdict).
 - `midday_trend/`: the midday trend-check grid (24 cells × three eras).
+- `trend_detector/`: Study T1 (detector inputs, univariate tables, subset search top 10, logistic model, summary, exploratory stops).
 - `early_trend/`: how early the direction shows on trend days, earlier entries with and against the gap, and the early-entry cascade.
 - `rule_1030_stops/`: stop placement for the 10:30 rule (per trade and per unit of risk, by era).
 - `trend_day_predictors/`: trend-day odds by pre-open and 09:45 conditions and hot-flag counts, and the 10:30 rule split by flags.
