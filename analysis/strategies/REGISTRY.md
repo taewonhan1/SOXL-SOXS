@@ -623,3 +623,67 @@ All levels are on SOXL's regular-session 1-minute chart.
 **Status**
 - No untouched history is left for this rule family.
 - The test is the forward paper log from 2026-09-28. Judge it after 60 trades.
+
+## Study T1: early trend-day detector (registered 2026-10-03, before any of its new data is downloaded)
+
+**Purpose:** find which combination of early-session data elements best separates real trend days from false starts, so the day's side can be chosen early.
+
+**Signals.**
+- Every session from 2011-06-01 to 2026-09-25, at two check times: 09:45 (close of bar 14) and 10:00 (close of bar 29). Each check time is analyzed separately.
+- A signal exists when SOXL is at least 1.0% from its 09:30 open at the check. The direction s is the sign of that move.
+
+**Targets.**
+- **T1:** a trend day in direction s, meaning SOXX open→close × s ≥ 2%.
+- **T2:** the trade result, in R = net % ÷ 1.5.
+  - Enter at the next bar's open in direction s. Up moves buy SOXL; down moves buy SOXS if its prior close is ≥ $10.
+  - Fixed 1.5% stop from the entry price on SOXL's chart.
+  - Exit at 15:55. Case B costs.
+
+**Stage-1 flags** (known at 09:30, direction-free; the score is their count, 0–5):
+1. **vol_hot:** SOXL's median daily range over the prior 20 sessions ÷ its median over the prior 250 sessions ≥ 1.2.
+2. **yday_trend:** the previous session's SOXX |open→close| ≥ 2%.
+3. **qqq_below:** QQQ's prior close is below its 50-day average.
+4. **big_gap:** |SOXL open ÷ prior close − 1| ≥ 0.5 × SOXL's prior 20-day median daily range.
+5. **open_outside:** SOXL's 09:30 open is above the prior session's regular-hours high or below its low.
+
+**Stage-2 inputs** (at check bar b; each oriented so that higher supports direction s):
+
+| Input | Definition |
+|---|---|
+| I1 scaled_move | \|move\| ÷ median \|move at bar b\| over the prior 20 sessions |
+| I2 gap_agree | 1 if the opening gap's sign equals s, else 0 |
+| I3 path_clean | \|c_b − o_0\| ÷ Σ_{i=0..b} \|c_i − c_{i−1}\|, with c_{−1} = o_0 |
+| I4 vwap_side | Share of bars 5..b whose close is on the s side of the session VWAP |
+| I5a flow_tick | Tick-rule signed dollar volume of SOXL trades from 09:30:00 to the check ÷ total dollar volume, × s |
+| I5b flow_bar | Σ sign(c_i − c_{i−1}) × v_i ÷ Σ v_i over bars 0..b, × s |
+| I6a breadth | Share of the member list moving with sign s from its own 09:30 open at bar b |
+| I6b leaders | Share of NVDA, AVGO, AMD and TSM moving with sign s |
+| I7 vix | −s × VIXY's move from its 09:30 open at bar b (%) |
+| I8 semis_vs_qqq | s × (SOXX move − QQQ move) at bar b (%) |
+| I9 level | +1 if SOXL traded beyond the prior session's high (s = +1) or low (s = −1) and the last 5 one-minute closes (b−4..b) are all beyond it; −1 if it traded beyond it but the close at b is back inside; 0 otherwise |
+
+- **Member list** (fixed; 23 long-lived U.S.-listed semis and ADRs): NVDA, AVGO, AMD, INTC, QCOM, TXN, MU, AMAT, LRCX, KLAC, ADI, MRVL, NXPI, MCHP, ON, SWKS, TER, TSM, ASML, MPWR, ENTG, LSCC, STM.
+  - Only members with valid data that day count toward breadth.
+  - The list holds only survivors, which is a known approximation of the index's changing membership.
+
+**Protocol.**
+- **Train / test split:** train on 2019-01-02 → 2025-12-31. Test on 2011-06-01 → 2018-12-31 and on 2026-01-02 → 2026-09-25. All terciles and thresholds come from the training data only.
+- **A. Univariate:** for each input, the T1 rate and mean T2 by training tercile (continuous inputs) or by value (discrete inputs), in all three eras. Reported in full.
+- **B1. Additive combinations:**
+  - Each input's favorable state is the top training tercile (continuous) or value 1 (I2; I9 = +1). The score is the count of favorable inputs in a subset.
+  - Search all subsets of size 1–5 of the 10 stage-2 inputs (I5a and I5b count separately; 637 subsets), each with thresholds score ≥ 1..size, with and without requiring a stage-1 score ≥ 2.
+  - A rule needs at least 10 signals a year in training. The rule with the highest training mean R is selected and evaluated once on the test eras. The top 10 training rules are also reported with their test results.
+- **B2. Logistic model:** L2-regularized logistic regression of T1 on all stage-2 inputs plus the stage-1 flags, standardized and fitted on training.
+  - Reported: test AUC, and the mean R of signals whose predicted probability is in the training top third.
+- **B3. Baselines:**
+  1. All signals (move ≥ 1%).
+  2. Move plus gap: I1 in its top tercile and I2 = 1.
+  3. The cascade's early rules: 09:45 2–3% with the gap; 10:00 3–4% with the gap.
+
+**Success:**
+- The B1-selected rule or the B2 model must beat baseline 2 in both test eras on both mean R per trade and trend-day share.
+- Its mean R must be > 0, with at least 10 trades a year.
+
+**Data downloaded after registration:**
+- Adjusted 1-minute bars from 2010-06 to 2026-09 for VIXY and the members.
+- SOXL trades from 09:30:00 to 10:00:00 ET for every session, aggregated per minute: tick-rule signed shares and dollars, odd-lot shares, block (≥ $250k) signed dollars, and off-exchange shares. The block and off-exchange fields are stored for later work and are not part of this search.
