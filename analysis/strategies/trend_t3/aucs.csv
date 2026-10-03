@@ -1,0 +1,6 @@
+model,target,test 2011-2018 AUC,train 2019-2025 AUC,test 2026 AUC
+L1 logistic,T1,0.7726,0.7707,0.7024
+LightGBM,T1,0.7489,0.9881,0.7075
+T2 logistic,T1,0.7652,0.7488,0.6781
+"L1 logistic, target CONT",CONT,0.6209,0.6391,0.5444
+"LightGBM, target CONT",CONT,0.5463,0.9956,0.4919

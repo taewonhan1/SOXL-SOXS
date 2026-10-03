@@ -1,0 +1,37 @@
+family,target,best_feature,train_auc,test 2011-2018 auc,test 2026 auc,consistent
+Size of the move so far,T1,x_SOXX,0.7340,0.7596,0.6840,True
+Size of the move so far,CONT,move_from_pc,0.5690,0.5299,0.5175,True
+Breadth across the 23 chip stocks,T1,breadth_1pct,0.7073,0.7290,0.7034,True
+Breadth across the 23 chip stocks,CONT,members_disp,0.5571,0.5479,0.5346,True
+Other markets at 10:29,T1,x_XLK,0.6615,0.6482,0.6053,True
+Other markets at 10:29,CONT,x_XLK,0.5546,0.5610,0.4034,False
+Recent volatility (daily),T1,d_atr_pct,0.6501,0.6933,0.6380,True
+Recent volatility (daily),CONT,d_atr_pct,0.5877,0.6161,0.6009,True
+Daily RSI and stochastic,T1,d_rsi2,0.4491,0.5062,0.4631,False
+Daily RSI and stochastic,CONT,d_rsi2,0.4731,0.4873,0.4833,True
+Intraday RSI (1- and 5-minute),T1,rsi5m_9,0.6123,0.5464,0.5790,True
+Intraday RSI (1- and 5-minute),CONT,rsi1m_14,0.5335,0.4353,0.5577,False
+"Daily trend (SMAs, MACD, ADX, Bollinger, 52-week)",T1,d_px_vs_sma5,0.4552,0.4971,0.4858,True
+"Daily trend (SMAs, MACD, ADX, Bollinger, 52-week)",CONT,d_px_vs_sma200,0.4663,0.4205,0.5957,False
+Prior days' returns and candle,T1,d_clv,0.4202,0.4834,0.5314,False
+Prior days' returns and candle,CONT,d_clv,0.4441,0.4684,0.5064,False
+"Yesterday's high, low and close",T1,vs_pdc_atr,0.5700,0.5511,0.5106,True
+"Yesterday's high, low and close",CONT,vs_pdc_atr,0.5341,0.4846,0.4709,False
+Pivots and prior week's high/low,T1,pivot_pos_atr,0.5360,0.5457,0.5118,True
+Pivots and prior week's high/low,CONT,beyond_week_atr,0.5166,0.4646,0.4718,False
+Gap and pre-market,T1,pm_range_rel,0.5722,0.5997,0.5236,True
+Gap and pre-market,CONT,pm_range_rel,0.5622,0.5380,0.5051,True
+Opening ranges,T1,or5_pos,0.6250,0.5296,0.5723,True
+Opening ranges,CONT,or5_pos,0.5248,0.4642,0.3996,False
+"Intraday EMA, MACD, Bollinger, VWAP",T1,ema9_21_5m,0.6811,0.6694,0.5743,True
+"Intraday EMA, MACD, Bollinger, VWAP",CONT,ema9_21_5m,0.5542,0.5339,0.3859,False
+Path shape,T1,max_1m_with,0.6312,0.6704,0.6297,True
+Path shape,CONT,max_1m_with,0.5678,0.5857,0.5590,True
+Volume and order flow,T1,rel_volume,0.6140,0.6596,0.5558,True
+Volume and order flow,CONT,rel_volume,0.5418,0.5807,0.4752,False
+Market regime (daily),T1,F3_qqq_below,0.6033,0.6472,0.5613,True
+Market regime (daily),CONT,F3_qqq_below,0.5651,0.5751,0.5284,True
+Calendar,T1,month,0.4453,0.5615,0.5757,False
+Calendar,CONT,month,0.4401,0.5627,0.5684,False
+Pre-open flag count,T1,stage1,0.5862,0.6594,0.6018,True
+Pre-open flag count,CONT,stage1,0.5593,0.5973,0.5489,True

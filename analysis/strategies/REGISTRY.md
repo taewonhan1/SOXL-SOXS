@@ -784,3 +784,23 @@ For each model: test AUC, and the T1 share, mean REST and mean R in its training
 - the pair/triple search ranked by training mean REST.
 
 A 2016–2019 dry run was used only to debug code; no study results were looked at.
+
+**Study T3 outcome (run once on 2026-10-03; includes Study T2): FAIL.** No selection met the test in both test eras. The test needs, in the ≥ 2% set, a trend share at least 1.5× base (≥ 30% in 2011–2018, ≥ 71% in 2026) and a higher mean REST than the rest.
+- 1,539 signals (628 / 810 / 101 in 2011–2018 / 2019–2025 / 2026); base trend share 20% / 31% / 48%.
+- 128 features. The pair/triple searches covered 6,906 rules each.
+
+| Selection (fit on 2019–2025) | Trend share, 2011–2018 / 2026 | Mean REST, picks vs rest, 2011–2018 | Mean REST, picks vs rest, 2026 | Fails on |
+|---|---|---|---|---|
+| Best rule by trend share: vwap_slope & soxx_vs_spy & x_EWY | 71% / 63% | −0.17 vs +0.15 | −0.74 vs +1.05 | REST both eras; 2026 share |
+| Best rule by REST: ema9_21_5m & d_atr_pct & move_from_pc | 62% / 60% | −0.09 vs +0.14 | −0.34 vs +0.62 | REST both eras; 2026 share |
+| L1 logistic (T1), top third | 46% / 60% | +0.23 vs +0.12 | +0.48 vs +0.35 | 2026 share |
+| LightGBM (T1), top third | 58% / 62% | +0.86 vs +0.02 | +0.50 vs +0.33 | 2026 share |
+| T2 logistic, top third | 46% / 58% | +0.49 vs +0.05 | −0.23 vs +1.39 | 2026 share and REST |
+| T2 simple score 4–6 | 37% / 73% | −0.55 vs +0.21 | +0.47 vs +0.41 | 2011–2018 REST |
+| L1 logistic (CONT), top third | 32% / 51% | +0.46 vs +0.01 | +0.81 vs −0.15 | 2026 share |
+| LightGBM (CONT), top third | 32% / 50% | +0.41 vs +0.05 | +0.28 vs +0.54 | 2026 share; 2026 REST |
+
+- Test AUC for T1: L1 0.77 / 0.70, LightGBM 0.75 / 0.71, T2 logistic 0.77 / 0.68.
+- Test AUC for CONT: L1 0.62 / 0.54, LightGBM 0.55 / 0.49.
+- Trend days can be ranked at 10:30, mostly from the size and breadth of the move in the underlying chips. The move after 10:30 could not be.
+- Details: RESULTS.md, "Study T3"; `trend_t3/`. The exploratory follow-up (`trend_t3_followup.py`) was run after this outcome.

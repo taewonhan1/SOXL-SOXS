@@ -18,6 +18,10 @@ running. Every number below comes from the per-study CSVs in this folder.
   - The kill-switch version lost −65 bps per trade.
 - **Conclusion:** no rule found in this project has a demonstrated edge on data it was not fitted to.
 - **The underlying effect is established; a profit after costs is not.** Going with SOXL's morning move beats picking a side at random by 0.2–0.3% a trade in each of 2011–2018, 2019–2025 and 2026 (random-direction test, p ≈ 0.002). Most of it is on the SOXL side (up moves, p ≈ 0.005). SOXS on down moves paid only after moves of 3% or more. Costs took most of that before 2026. What is left after costs (+0.07% a trade on average over 2011–2026) is not distinguishable from zero (reality check, p ≈ 0.2). See "Luck check" under "Live trend odds".
+- **Trend days can be ranked at 10:30; the move after 10:30 cannot (Study T3, FAIL).** Across 128 technical inputs and 6,906 combinations:
+  - SOXX's own move and breadth across the big chip stocks tell trend days apart (AUC about 0.7 on unseen years).
+  - RSI, yesterday's high/low, pivots and moving averages carry nothing.
+  - No input or combination reliably predicted SOXL's move from 10:30 to the close.
 
 **The 1-minute momentum scalps (Studies 10–12, 24 variants) fail differently from the near-misses: they have no edge before costs.**
 - In validation, Bone Zone-like and flag-like entries on SOXL's 1-minute chart capture −10 to +3 bps gross per trade on average.
@@ -620,6 +624,101 @@ Registry: REGISTRY.md, "Study T1". Scripts: `scripts/research/download_detector_
 
 **Conclusion:** extra data identifies trend days better than price alone. Breadth, semis vs QQQ, VIXY and the pre-open flags carry the most information. But in these tests it did not produce more profit per unit of risk than the simple 10:30 rule. The most practical use is as confirmation in a live scanner: favor days with broad participation and semis leading QQQ.
 
+## Study T3: every technical input at 10:30 (registered; FAIL)
+
+Registry: REGISTRY.md, "Study T3" (includes Study T2). Scripts: `scripts/research/trend_t3.py`, plus the exploratory follow-up `scripts/research/trend_t3_followup.py`. Outputs: `trend_t3/`.
+- **Signals:** 1,539 mornings with SOXL ≥ 2% from its open at 10:29 (628 / 810 / 101 in 2011–2018 / 2019–2025 / 2026). Trend days among them: 20% / 31% / 48%.
+- **Inputs:** 128, all known by 10:29:
+  - **Daily technicals through the prior close:** RSI 2/5/14, SMAs 5–200, MACD, Bollinger, stochastic, ADX, ATR, Donchian, 52-week position, streaks, NR4/NR7.
+  - **Prior levels:** yesterday's high, low and close; floor pivots; the prior week's high and low; the gap and pre-market.
+  - **Intraday technicals:** opening ranges; 1- and 5-minute RSI, EMA and MACD; Bollinger; VWAP; path shape; volume; tick-level order flow.
+  - **Context:** 14 other markets, breadth across 23 chip stocks, market regime, the calendar.
+- **Searches:**
+  - 6,906 two- and three-input rules, ranked once by trend share and once by the move left after 10:30.
+  - L1 logistic and LightGBM models for a trend day, and again for "another 2%+ after 10:30".
+  - The Study T2 model and score.
+- **Protocol:** fitted on 2019–2025 only; judged on 2011–2018 and 2026.
+
+**Verdict: FAIL.** The test needed both of these, in both test periods:
+- a trend share at least 1.5× base (30% in 2011–2018, 71% in 2026);
+- a bigger move after 10:30 than the rest.
+
+The main attempts below. "Move after 10:30" is SOXL's mean move from 10:30 to 15:55, in %, with no stop. The full table, with mean R, is in REGISTRY.md and `models.csv`.
+
+| Selection | Trend share, 2011–2018 / 2026 | Move after 10:30, picks vs rest, 2011–2018 | Same, 2026 |
+|---|---|---|---|
+| All ≥ 2% mornings | 20% / 48% | +0.14 | +0.43 |
+| Best of 6,906 rules by trend share | 71% / 63% | −0.17 vs +0.15 | −0.74 vs +1.05 |
+| Best of 6,906 rules by move after 10:30 | 62% / 60% | −0.09 vs +0.14 | −0.34 vs +0.62 |
+| L1 logistic, top third | 46% / 60% | +0.23 vs +0.12 | +0.48 vs +0.35 |
+| LightGBM, top third | 58% / 62% | +0.86 vs +0.02 | +0.50 vs +0.33 |
+| L1 logistic aimed at "another 2%+", top third | 32% / 51% | +0.46 vs +0.01 | +0.81 vs −0.15 |
+
+**What tells a trend day at 10:30: the size and breadth of the move in the chip stocks themselves.**
+- **The models rank trend days well on unseen years:** AUC 0.77 / 0.70 for L1 and 0.75 / 0.71 for LightGBM (0.5 is a coin flip).
+- **The signal is broad:** 86 of 128 inputs point the same way in all three periods, against about 32 expected by chance. 68 pass q ≤ 0.10 in training.
+- **Strongest single inputs** (AUC, 2011–2018 / 2019–2025 / 2026):
+
+  | Input at 10:29 | AUC |
+  |---|---|
+  | SOXX's own move from its open | 0.76 / 0.73 / 0.68 |
+  | Average move of the 23 chip stocks | 0.75 / 0.72 / 0.68 |
+  | Share of the 23 moving > 1% the same way | 0.73 / 0.71 / 0.70 |
+  | SMH's move | 0.71 / 0.73 / 0.72 |
+  | SOXL's recent volatility (prior ATR %) | 0.69 / 0.65 / 0.64 |
+  | SOXX minus SPY | 0.68 / 0.65 / 0.68 |
+  | 5-minute EMA 9 vs 21 | 0.67 / 0.68 / 0.57 |
+  | XLK's move | 0.65 / 0.66 / 0.61 |
+
+- **A two-input read (exploratory):**
+  - Both strong (each in its top training third): SOXX ≥ 1.33% from its open in SOXL's direction, and ≥ 65% of the 23 chip stocks more than 1% from their opens that way. Trend days: 52% / 54% / 69%.
+  - Either weak (in its bottom third): SOXX < 0.96% that way, or < 43% of the chips. Trend days: 10% / 16% / 37%.
+
+**The classic chart inputs carry almost no information.** AUC per period (2011–2018 / 2019–2025 / 2026). Below 0.5 means the input points the other way.
+
+| Input | Trend day | Another 2%+ after 10:30 |
+|---|---|---|
+| Daily RSI 2 | 0.51 / 0.45 / 0.46 | 0.49 / 0.47 / 0.48 |
+| Daily RSI 14 | 0.48 / 0.48 / 0.49 | 0.45 / 0.48 / 0.53 |
+| Distance from yesterday's close (in ATR) | 0.55 / 0.57 / 0.51 | 0.49 / 0.53 / 0.47 |
+| Distance beyond yesterday's high or low | 0.53 / 0.52 / 0.50 | 0.47 / 0.50 / 0.47 |
+| Break and hold of yesterday's high or low | 0.51 / 0.50 / 0.52 | 0.47 / 0.49 / 0.50 |
+| Position vs the floor pivot | 0.55 / 0.54 / 0.51 | 0.48 / 0.51 / 0.48 |
+| Beyond the prior week's high or low | 0.52 / 0.51 / 0.46 | 0.47 / 0.52 / 0.47 |
+| Price vs 20-day / 200-day SMA | 0.48 / 0.46 / 0.51 and 0.43 / 0.47 / 0.49 | 0.46 / 0.48 / 0.51 and 0.42 / 0.47 / 0.60 |
+| Daily MACD | 0.47 / 0.49 / 0.53 | 0.47 / 0.48 / 0.55 |
+| 5-minute RSI 9 | 0.55 / 0.61 / 0.58 | 0.47 / 0.52 / 0.50 |
+| Tick-level order flow to 10:00 | 0.50 / 0.50 / 0.62 | 0.49 / 0.52 / 0.54 |
+
+- The intraday RSI and EMA readings separate trend days only because they restate the size of the move.
+- Best input of each of the 18 families: `followup_families.csv`.
+
+**Whether the move continues after 10:30 is barely predictable.**
+- **Models aimed at "another 2%+ after 10:30"** score AUC 0.62 / 0.54 (L1) and 0.55 / 0.49 (LightGBM) on unseen years.
+- **Few inputs hold up:** only 40 of 128 point the same way in all three periods, against about 32 by chance. 16 pass q ≤ 0.10 in training.
+- **The ones that hold up are about volatility and regime** (AUC, 2011–2018 / 2019–2025 / 2026):
+  - SOXL's recent ATR %: 0.62 / 0.59 / 0.60.
+  - The "volatility hot" pre-open flag: 0.58 / 0.57 / 0.58.
+  - The biggest 1-minute bar with the move: 0.59 / 0.57 / 0.56.
+  - The pre-open flag count: 0.60 / 0.56 / 0.55.
+  - QQQ below its 50-day average: 0.58 / 0.57 / 0.53.
+- **The size of the move flipped in 2026:** bigger moves at 10:30 had less left. SOXX's move scored 0.60 / 0.56 / 0.40.
+- **The best model's picks** (L1 aimed at "another 2%+", top third) went +0.46 / +0.81% after 10:30, against +0.01 / −0.15% for the rest.
+  - That is t = 1.3 / 0.9, not significant.
+  - With the 1.5% stop: +0.13 / +0.04 R.
+
+**Why spotting a trend day does not pay after 10:30.**
+- Take the mornings where both SOXX's move and breadth are in their top third; 52–69% of them become trend days.
+  - SOXL's further move from 10:30 to 15:55 averaged +0.23 / +0.31 / +0.28% (median +0.86 / +0.87 / +0.63%).
+  - All ≥ 2% mornings averaged +0.14 / +0.37 / +0.43%.
+  - With the 1.5% stop: +0.06 / −0.08 / −0.51 R.
+- The days that look most like trend days at 10:30 already have the most move done. The ones that fail reverse hard, which is why the mean is well below the median.
+
+**Conclusion**
+- **Trend-day odds can be ranked at 10:30.** Use SOXX's own move and how many of the big chip stocks are moving more than 1% with it.
+- **The classic chart inputs add nothing to that.** RSI, yesterday's high/low/close, pivots and moving averages carry no useful information here.
+- **No input or combination of the 128 reliably predicted SOXL's move after 10:30,** which is the part a trade captures. No filter tested here improved the 10:30 rule (move size alone) in both test periods.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -670,6 +769,7 @@ The log also prints the S15 kill-switch state: ON while the last 60 S3-01 signal
 - `holdout_2026/`: the one-time 2026 holdout test of S15 and the context rules (summary, S15 by month, trades, verdict).
 - `midday_trend/`: the midday trend-check grid (24 cells × three eras).
 - `trend_detector/`: Study T1 (detector inputs, univariate tables, subset search top 10, logistic model, summary, exploratory stops).
+- `trend_t3/`: Study T3 (128-input univariate screen, pair/triple search top 20 by trend share and by the move after 10:30, L1 logistic and LightGBM for both targets, models vs rest, AUCs) and the exploratory follow-up (`followup_*.csv`: continuation screen, best input per family, model top third vs rest, SOXX move × breadth).
 - `early_trend/`: how early the direction shows on trend days, earlier entries with and against the gap, and the early-entry cascade.
 - `rule_1030_stops/`: stop placement for the 10:30 rule (per trade and per unit of risk, by era).
 - `trend_day_predictors/`: trend-day odds by pre-open and 09:45 conditions and hot-flag counts, and the 10:30 rule split by flags.
