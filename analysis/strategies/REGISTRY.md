@@ -745,3 +745,36 @@ All levels are on SOXL's regular-session 1-minute chart.
   - Reported by score group (0–1, 2–3, 4–6) per era.
 
 **Useful if:** in both test eras, the logistic top third or the 4–6 score group has a T1 share at least 1.5× the era's base rate and a higher mean REST than the rest. That applies to the ≥ 2% set, with the 3–4% subset reported alongside.
+
+## Study T3: exhaustive technical search for trend days at 10:30 (registered 2026-10-03, before running; includes Study T2)
+
+The user asked for every technical element and every feasible combination. Study T2's registered components (its simple score and logistic model) are run and reported as part of T3.
+
+**Signals and targets:** as in Study T2.
+- Days with SOXL at least 2% from its 09:30 open at the 10:29 close, plus the 3–4% subset. Direction s is the sign of the move.
+- Targets: T1 (trend day that way), REST (10:30 → 15:55 move that way, no stop) and R (1.5% stop, case B).
+
+**Feature library.** About 150 features, all computed from data available by the 10:29 close. Directional features are oriented by s, so higher means more in the move's direction.
+
+| Family | Features |
+|---|---|
+| Daily technicals (through the prior close) | RSI 2/5/14; price vs SMA 5/10/20/50/100/200; SMA20 and SMA50 slopes; MACD 12/26/9 line and histogram; Bollinger %B and bandwidth; stochastic %K; Williams %R; ADX and DI difference; ATR % and ATR 5/20 ratio; Donchian 20 position; 52-week high/low proximity; consecutive days in the move's direction; 1/2/5/20-day returns; prior day's close location in its range; prior range vs its 20-day average; NR4, NR7 and inside-day flags |
+| Prior-day levels and pivots | Open vs prior high/low/close; 10:29 close vs prior high/low/close, in ATR; break-and-hold of prior high/low; gap filled by 10:30; classic floor pivots P, R1, S1, R2, S2 and price vs them; prior-week high/low |
+| Intraday technicals (bars 0–59) | Move from the open and from the prior close; opening ranges 5/15/30/60 (size vs typical, position, hold); RSI 14 on 1-minute and 5-minute bars; EMA 9/21 on 1-minute and 5-minute bars (difference, price vs EMA, slope); 5-minute MACD and Bollinger %B; VWAP distance, side share, crosses and slope; path cleanliness over 0–59 and 30–59; T2's N1–N5; new extremes in the last 30 minutes; realized volatility vs typical; relative volume; up-volume share; tick flow to 10:00; largest 1-minute move; pre-market return and range; price vs pre-market high/low |
+| Cross-asset (move from own open at 10:29, oriented) | SOXX, SMH, NVDA, QQQ, SPY, IWM, TLT, UUP, GLD, HYG, VIXY, EWT, EWY, XLK; semis vs QQQ; SOXX vs SPY; breadth (23 members), leaders, share of members moving more than 1%, NVDA vs the rest; QQQ vs its 50-day and SPY vs its 200-day average; TLT 5-day return; SOXS/SOXL volume ratio vs typical |
+| Calendar | Weekday, month, opex week, month end |
+
+**Methods.** All fitted on 2019-01-02 → 2025-12-31 only and judged on 2011-06-01 → 2018-12-31 and 2026-01-02 → 2026-09-25.
+1. **Univariate screen:** training AUC for T1 per feature, with Benjamini–Hochberg q-values (Mann–Whitney), and test AUCs. Consistency means the same side of 0.5 in all three eras.
+2. **Exhaustive pairs and triples** among the 40 features with the largest training |AUC − 0.5|.
+   - A rule requires every component to be in its favorable training tercile and at least 10 signals a year in training.
+   - The rule with the best training T1 share is selected; it and the top 20 are reported on the test eras.
+3. **L1 logistic:** L1-regularized logistic regression of T1 on all features, with C = 0.05 fixed in advance.
+4. **LightGBM:** fixed hyperparameters (300 trees, max depth 3, learning rate 0.03, min 30 per leaf, feature and bagging fraction 0.7), objective T1.
+5. **Study T2 components**, as registered.
+
+For each model: test AUC, and the T1 share, mean REST and mean R in its training top third against the rest.
+
+**Useful if:** as in Study T2. In both test eras, the selected rule or a model's top third has a T1 share at least 1.5× the era's base rate and a higher mean REST than the rest, in the ≥ 2% set.
+
+**Extra data downloaded after registration:** adjusted 1-minute bars from 2010-06 to 2026-09 for SPY, IWM, TLT, UUP, GLD, HYG, EWT, EWY and XLK.
