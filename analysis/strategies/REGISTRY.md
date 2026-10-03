@@ -701,3 +701,47 @@ All levels are on SOXL's regular-session 1-minute chart.
 
 - Logistic test AUC for trend days: 0.74 / 0.65 at 09:45 and 0.74 / 0.70 at 10:00. The detector finds trend days, but with the 1.5% stop its trades did not pay.
 - Details: RESULTS.md, "Study T1"; `trend_detector/`.
+
+## Study T2: is this a trend day? Odds at 10:30 (registered 2026-10-03, before running)
+
+**Question:** when SOXL has moved from its open by 10:30, what tells a day that will keep running (a trend day that way) from one that will fizzle?
+
+**Signals.**
+- Days with SOXL at least 2% from its 09:30 open at the close of bar 59 (10:29), for more data.
+- The 3–4% subset (the 10:30 rule's days) is reported separately.
+- Direction s is the sign of the move.
+
+**Targets.**
+- **T1:** trend day that way (SOXX open→close × s ≥ 2%).
+- **REST:** SOXL's move from the 10:30 open to the 15:55 open in direction s, with no stop.
+- **R:** the 10:30 trade with a fixed 1.5% stop, case B.
+
+**Features at 10:30.**
+- **From Study T1, recomputed at bar 59:**
+  - the five stage-1 flags and their score;
+  - I1–I4, I5b, I6a, I6b, I7, I8 and I9 at bar 59;
+  - I5a over 09:30–10:00 only, because the trade data ends at 10:00.
+- **New "still going or stalling" features:**
+
+| Feature | Definition |
+|---|---|
+| N1 pullback | (day's extreme in direction s so far − close at 10:29) ÷ (extreme − open) |
+| N2 recent_leg | s × (close at 10:29 ÷ close at 09:59 − 1) |
+| N3 extreme_age | Minutes since the day's extreme in direction s, as of 10:29 |
+| N4 volume_trend | Volume 10:00–10:29 ÷ volume 09:30–09:59 |
+| N5 range_expansion | High-to-low range since the open ÷ its prior 20-day median at the same time |
+
+**Protocol.** Train on 2019-01-02 → 2025-12-31; test on 2011-06-01 → 2018-12-31 and 2026-01-02 → 2026-09-25. All terciles come from training.
+- **A. Univariate:** T1 share and mean REST by training tercile or value, all eras, for the ≥ 2% set and the 3–4% subset.
+- **B. Logistic model:** L2-regularized logistic regression (λ = 10) of T1 on all features plus |move|, fitted on the training ≥ 2% set.
+  - Reported: test AUC, and the T1 share, mean REST and mean R in the training top third against the rest, for both sets.
+- **C. Fixed simple score:** a count of six components (0–6):
+  1. stage-1 score ≥ 2;
+  2. breadth in its top tercile;
+  3. semis-vs-QQQ in its top tercile;
+  4. VIXY in its top tercile;
+  5. pullback in its bottom tercile;
+  6. recent leg in its top tercile.
+  - Reported by score group (0–1, 2–3, 4–6) per era.
+
+**Useful if:** in both test eras, the logistic top third or the 4–6 score group has a T1 share at least 1.5× the era's base rate and a higher mean REST than the rest. That applies to the ≥ 2% set, with the 3–4% subset reported alongside.
