@@ -90,7 +90,7 @@ def flip_intents(ctx, in_era: np.ndarray, k: float) -> pd.DataFrame:
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     cms = {"A": C.cost_model(0.0), "B": C.cost_model(C.COMMISSION_B)}
-    rows, rem, flips = [], [], []
+    rows, rem, flips, flips_dir = [], [], [], []
     for era, start, end in ERAS:
         ctx = C.Context(start="2025-10-01" if era == "2026" else start, end=end)
         L, X = ctx["SOXL"], ctx["SOXX"]
@@ -108,6 +108,11 @@ def main() -> None:
                           "win": float((x > 0).mean()) if len(x) else np.nan,
                           "net_pct": float(x.mean()) / 100 if len(x) else np.nan,
                           "median_entry": clock(int(np.median(ex["e"]))) if len(x) else ""})
+            for sd, g in ex.groupby("s"):
+                flips_dir.append({"era": era, "first_move_k_pct": k,
+                                  "flip": "into SOXS (failed up move)" if sd < 0 else "into SOXL (failed down move)",
+                                  "trades": len(g), "win": float((g["net_B"] > 0).mean()),
+                                  "net_pct": float(g["net_B"].mean()) / 100})
         for (tname, bar), (lo, hi, bname) in itertools.product(CHECKS.items(), BUCKETS):
             cand = []
             for d in np.flatnonzero(in_era):
@@ -157,6 +162,8 @@ def main() -> None:
     rem.to_csv(OUT / "trend_day_move_done.csv", index=False, float_format="%.4f")
     flips = pd.DataFrame(flips)
     flips.to_csv(OUT / "flip_at_open.csv", index=False, float_format="%.4f")
+    flips_dir = pd.DataFrame(flips_dir)
+    flips_dir.to_csv(OUT / "flip_at_open_by_direction.csv", index=False, float_format="%.4f")
     pd.set_option("display.width", 250)
     print(w.round(3).to_string())
     print("\n== pooled over 2011-2026 (go with the move to 15:55)\n" + pooled.round(3).to_string())
@@ -164,6 +171,8 @@ def main() -> None:
           rem.pivot_table(index="check", columns="era", values=["median_share_done", "median_pct_left",
                                                                 "share_with_2pct_plus_left"]).reindex(list(CHECKS)).round(2).to_string())
     print("\n== flip when SOXL closes back through its open (by 14:30) after a k% move\n" + flips.round(3).to_string(index=False))
+    print("\n" + flips_dir.pivot_table(index=["flip", "first_move_k_pct"], columns="era",
+                                       values=["net_pct", "trades"]).round(2).to_string())
     print(f"\nwrote {OUT.relative_to(ROOT)}/")
 
 

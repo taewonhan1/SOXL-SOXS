@@ -396,6 +396,9 @@ Script: `scripts/research/intraday_trend_odds.py`. Outputs: `intraday_trend_odds
 | 4% | −0.05% (51%, 6 a year) | −0.38% (51%, 22 a year) | +0.35% (46%, 36 a year) |
 
 - The open cross is not a reliable switch signal. A move that fails usually leads to chop, not a trend the other way.
+- **By direction** (`flip_at_open_by_direction.csv`), pooled over 2011–2026:
+  - Flipping into SOXS after a failed up move lost on average at every threshold: −0.14% (2% first move), −0.23% (3%) and −0.44% (4%) a trade. The 2026 cells that made money rest on 12 and 5 trades.
+  - Flipping into SOXL after a failed down move made +0.07% after a 2% move and lost −0.10% and −0.09% after 3% and 4%.
 - **Status:** exploratory. S16 (11:00, ≥ 3%, stop at the open) remains the forward-tracked version of this idea.
 
 **Luck check** (`scripts/research/luck_check.py`, `luck_check.csv`, `luck_check_by_era.csv`; 2,000 runs per null, no-stop cells). It asks two different questions:
