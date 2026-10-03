@@ -687,3 +687,5 @@ All levels are on SOXL's regular-session 1-minute chart.
 **Data downloaded after registration:**
 - Adjusted 1-minute bars from 2010-06 to 2026-09 for VIXY and the members.
 - SOXL trades from 09:30:00 to 10:00:00 ET for every session, aggregated per minute: tick-rule signed shares and dollars, odd-lot shares, block (≥ $250k) signed dollars, and off-exchange shares. The block and off-exchange fields are stored for later work and are not part of this search.
+
+**Correction (2026-10-03, before any Study T1 result was computed).** The input table defines 11 stage-2 inputs: I5a/I5b and I6a/I6b each count separately. So the B1 search covers all 1,023 subsets of size 1–5, not "10 inputs, 637 subsets." Everything else is unchanged.
