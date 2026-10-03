@@ -511,6 +511,18 @@ Script: `scripts/research/rule_1030_stops.py`. Outputs: `rule_1030_stops/`.
 - **The combination earns the most per unit of risk, but it trades only about 8 times a year.** Taking every setup with the 1.5% stop earns more in total, because days with 0–1 flags still made 0.13 R.
 - **In 2026 the 1.5% stop was too tight for flagged days:** 0.05 R against 0.37 R with the open stop, over 10 trades. SOXL's daily ranges in 2026 were the widest in the sample.
 
+**Sizing plans with the 1.5% stop** (`sizing_plans_1p5_stop.csv`; 1 R = the dollar risk of one unit):
+
+| Plan | Trades | R a year | Max drawdown | Worst year | Losing years | Total ÷ max drawdown | R per unit by era |
+|---|---|---|---|---|---|---|---|
+| Every setup, 1 unit | 346 | +4.0 | −12.2 R | −3.6 R | 4 of 16 | **5.0** | 0.15 / 0.20 / 0.14 |
+| 2+ flag days only | 119 | +2.1 | −11.7 R | −7.5 R | 3 of 14 | 2.7 | 0.31 / 0.27 / 0.05 |
+| Every setup, 1.5 units on 2+ flag days | 346 | +5.0 | −16.8 R | −5.9 R | 4 of 16 | 4.6 | 0.17 / 0.21 / 0.12 |
+| Every setup, 2 units on 2+ flag days | 346 | +6.1 | −21.4 R | −9.6 R | 4 of 16 | 4.3 | 0.19 / 0.22 / 0.11 |
+
+- Taking every setup at the same risk has the best ratio of profit to drawdown and the most even results across eras.
+- Sizing up on flagged days adds profit, but adds drawdown faster. Risking more on every trade would do the same job with a better ratio.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
