@@ -1,0 +1,13 @@
+era,score,group,trades,win,net_pct
+2011-2018,score_preopen,0-1 flags,88,0.5000,0.1004
+2011-2018,score_preopen,2+ flags,40,0.5750,0.7155
+2011-2018,score_0945,0-1 flags,71,0.5352,0.3169
+2011-2018,score_0945,2+ flags,57,0.5088,0.2624
+2019-2025,score_preopen,0-1 flags,133,0.5113,0.2604
+2019-2025,score_preopen,2+ flags,69,0.5072,0.5477
+2019-2025,score_0945,0-1 flags,113,0.5133,0.2752
+2019-2025,score_0945,2+ flags,89,0.5056,0.4644
+2026,score_preopen,0-1 flags,6,0.5000,0.0688
+2026,score_preopen,2+ flags,10,0.6000,1.3676
+2026,score_0945,0-1 flags,6,0.5000,0.0688
+2026,score_0945,2+ flags,10,0.6000,1.3676

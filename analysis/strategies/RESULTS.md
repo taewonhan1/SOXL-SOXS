@@ -442,6 +442,42 @@ Script: `scripts/research/intraday_trend_odds.py`. Outputs: `intraday_trend_odds
 - **Fading loses.** Buying SOXS into an up move lost about 0.5% a trade in every era. Buying SOXL into a down move lost before 2026.
 - **Small samples:** the 2026 down side is small (224 signals over all cells). A day counts once for each check time it qualifies at.
 
+## Knowing earlier: pre-open flags for trend days (exploratory)
+
+Script: `scripts/research/trend_day_predictors.py`. Outputs: `trend_day_predictors/`.
+- Every condition is built from trailing data only.
+- The flags come from the 2019–2025 conditions analysis above. The thresholds are round numbers fixed for this run. 2011–2018 and 2026 played no part in choosing the flags.
+
+**The four pre-open flags**, each known by 09:30:
+1. SOXL's median daily range over the last 20 sessions is at least 1.2× its median over the last 250.
+2. Yesterday was a trend day.
+3. QQQ's prior close is below its 50-day average.
+4. SOXL's gap is at least half its typical (20-day median) daily range.
+
+**Share of days that ended as trend days**, 2011–2018 / 2019–2025 / 2026:
+
+| Pre-open flags | Trend-day rate | Share of days |
+|---|---|---|
+| All days | 10% / 20% / 31% | — |
+| 0 flags | 4% / 12% / 9% | 47% / 37% / 12% |
+| 1 | 10% / 17% / 23% | 31% / 34% / 34% |
+| 2 | 16% / 30% / 40% | 16% / 17% / 31% |
+| 3 or 4 | **35% / 43% / 42%** | 6% / 12% / 23% |
+
+- **Each flag on its own raises the odds in all three eras.** The strongest are a hot volatility regime (19% / 36% / 41% against 5% / 13% / 18% in a calm one) and QQQ below its 50-day average (21% / 36% / 33% against 5% / 14% / 29%).
+- **By 09:45:** a first-15-minute range at least 1.25× its 20-day average gives 16% / 31% / 46% trend days, against 6% / 15% / 19% when it is narrow.
+- **Busy pre-market and event days help less.** These are measurable from 2019 only: busy pre-market 28% / 36%, event days 23% / 36%.
+
+**The 10:30 rule (SOXL 3–4% from its open at 10:30, stop at the open) by pre-open flags** (`rule_1030_by_flags.csv`):
+
+| Pre-open flags | 2011–2018 | 2019–2025 | 2026 | Pooled |
+|---|---|---|---|---|
+| 2 or more | +0.72% (40 trades) | +0.55% (69) | +1.37% (10) | **+0.67%** (119) |
+| 0–1 | +0.10% (88) | +0.26% (133) | +0.07% (6) | +0.19% (227) |
+
+- The rule did better on days with two or more pre-open flags in every era. The 09:45 score, which adds the first-15-minute range, separates less well: +0.26% against +0.32% in 2011–2018.
+- **Status:** a slice of a post-hoc rule, about 8 trades a year, and 2026 rests on 16 trades. Not forward-tested.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -491,6 +527,7 @@ The log also prints the S15 kill-switch state: ON while the last 60 S3-01 signal
 - `orb_best/`: 480-combination search on 2019–2025, the one-time 2011–2018 test, and the deep-history diagnostics.
 - `holdout_2026/`: the one-time 2026 holdout test of S15 and the context rules (summary, S15 by month, trades, verdict).
 - `midday_trend/`: the midday trend-check grid (24 cells × three eras).
+- `trend_day_predictors/`: trend-day odds by pre-open and 09:45 conditions and hot-flag counts, and the 10:30 rule split by flags.
 - `intraday_trend_odds/`: live odds by check time and move so far (`odds.csv` per era, `pooled.csv`), how much of trend days' move is done at each check, the flip-at-the-open test, and the luck check (`luck_check*.csv`).
 - `output/`: the supplementary spread table and the event calendar.
 - Trade-level files: `data/research/trades/` (gitignored, reproducible).
