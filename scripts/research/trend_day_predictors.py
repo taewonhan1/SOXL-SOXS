@@ -13,7 +13,8 @@ and within buckets of conditions known at 09:30 or 09:45, all built from trailin
 Plus a count of "hot" flags: vol regime >= 1.2, yesterday a trend day, QQQ below its 50-day, gap >= half a typical
 day's range (pre-open score, 0-4), and the same plus a first-15-minute range >= 1.25x normal (09:45 score, 0-5).
 Finally, the 10:30 rule (SOXL 3-4% from its open at 10:30 -> go with it, stop at the open, exit 15:55; case B)
-split by the pre-open and 09:45 scores (0-1 vs 2+ flags), per era.
+split by the pre-open and 09:45 scores (0-1 vs 2+ flags), per era; and every 3%+ move at 10:30 (3-4 / 4-6 / 6%+,
+same stop and exit) split by how the day ended: trend day the same way, medium, quiet, trend day the other way.
 Writes analysis/strategies/trend_day_predictors/.
 """
 from __future__ import annotations
@@ -69,8 +70,8 @@ def features(ctx, start: str) -> pd.DataFrame:
     return df[(df.index >= start) & df["trend"].notna()]
 
 
-def rule_1030(ctx, start: str, end: str, cms: dict) -> pd.DataFrame:
-    """The 10:30 rule: SOXL 3-4% from its open at the 10:29 close -> go with it, stop at the open, exit 15:55."""
+def rule_1030(ctx, start: str, end: str, cms: dict, lo: float = 3, hi: float = 4) -> pd.DataFrame:
+    """The 10:30 rule: SOXL lo-hi% from its open at the 10:29 close -> go with it, stop at the open, exit 15:55."""
     L = ctx["SOXL"]
     p = L.p
     it = []
@@ -79,16 +80,21 @@ def rule_1030(ctx, start: str, end: str, cms: dict) -> pd.DataFrame:
         if 60 >= flat or not (np.isfinite(L.o0[d]) and np.isfinite(p.c[d, 59])):
             continue
         m = (p.c[d, 59] / L.o0[d] - 1) * 100
-        if 3 <= abs(m) < 4:
+        if lo <= abs(m) < hi:
             it.append({"d": d, "sig": 59, "e": 60, "s": 1 if m > 0 else -1, "tx": flat, "tx_kind": "open",
                        "stop": L.o0[d]})
-    return E.add_costs(E.execute(E.simulate(L, E.make_intents(it)), ctx, mode="switch")[0], cms)
+    ex = E.add_costs(E.execute(E.simulate(L, E.make_intents(it)), ctx, mode="switch")[0], cms)
+    X = ctx["SOXX"]
+    sx = (X.last_c / X.o0 - 1)[ex["d"].to_numpy().astype(int)] * ex["s"].to_numpy()
+    ex["day"] = np.where(sx >= 0.02, "trend, same way", np.where(sx <= -0.02, "trend, other way",
+                         np.where(np.abs(sx) >= 0.01, "medium", "quiet")))
+    return ex
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     cms = {"B": C.cost_model(C.COMMISSION_B)}
-    rows, scores, rule = [], [], []
+    rows, scores, rule, drive = [], [], [], []
     for era, start, end in ERAS:
         ctx = C.Context(start="2025-10-01" if era == "2026" else "2010-06-01" if era == "2011-2018" else "2018-01-02",
                         end=end)
@@ -98,7 +104,13 @@ def main() -> None:
         for sc in ("score_preopen", "score_0945"):
             for grp, g in ex.groupby(np.where(ex[sc] >= 2, "2+ flags", "0-1 flags")):
                 rule.append({"era": era, "score": sc, "group": grp, "trades": len(g),
-                             "win": float((g["net_B"] > 0).mean()), "net_pct": float(g["net_B"].mean()) / 100})
+                             "win": float((g["net_B"] > 0).mean()), "net_pct": float(g["net_B"].mean()) / 100,
+                             "trend_same_way_share": float((g["day"] == "trend, same way").mean())})
+        for lo, hi, lab in ((3, 4, "3-4%"), (4, 6, "4-6%"), (6, 1e9, "6%+")):
+            dx = rule_1030(ctx, start, end, cms, lo, hi)
+            for day, g in dx.groupby("day"):
+                drive.append({"era": era, "move_at_1030": lab, "day": day, "trades": len(g),
+                              "win": float((g["net_B"] > 0).mean()), "net_pct": float(g["net_B"].mean()) / 100})
         base = df["trend"].mean()
         rows.append({"era": era, "condition": "all days", "bucket": "", "days": len(df), "share_of_days": 1.0,
                      "trend_day_rate": base, "lift": 1.0})
@@ -119,6 +131,8 @@ def main() -> None:
                                "days": len(g), "share_of_days": len(g) / len(df), "trend_day_rate": g["trend"].mean()})
     res, sc, rl = pd.DataFrame(rows), pd.DataFrame(scores), pd.DataFrame(rule)
     rl.to_csv(OUT / "rule_1030_by_flags.csv", index=False, float_format="%.4f")
+    dr = pd.DataFrame(drive)
+    dr.to_csv(OUT / "drive_1030_by_daytype.csv", index=False, float_format="%.4f")
     res.to_csv(OUT / "conditions.csv", index=False, float_format="%.4f")
     sc.to_csv(OUT / "hot_flag_scores.csv", index=False, float_format="%.4f")
     pd.set_option("display.width", 250)
@@ -127,6 +141,10 @@ def main() -> None:
     print("\n" + sc.pivot_table(index=["score", "hot_flags"], columns="era",
                                 values=["trend_day_rate", "share_of_days"]).round(2).to_string())
     print("\n" + rl.pivot_table(index=["score", "group"], columns="era", values=["net_pct", "trades"]).round(2).to_string())
+    pooled = dr.assign(tot=dr["net_pct"] * dr["trades"], w=dr["win"] * dr["trades"]).groupby(["move_at_1030", "day"])[
+        ["trades", "tot", "w"]].sum()
+    print("\n" + pd.DataFrame({"trades": pooled["trades"], "avg_pct": pooled["tot"] / pooled["trades"],
+                               "win": pooled["w"] / pooled["trades"]}).round(2).to_string())
     print(f"\nwrote {OUT.relative_to(ROOT)}/")
 
 
