@@ -478,6 +478,27 @@ Script: `scripts/research/trend_day_predictors.py`. Outputs: `trend_day_predicto
 - The rule did better on days with two or more pre-open flags in every era. The 09:45 score, which adds the first-15-minute range, separates less well: +0.26% against +0.32% in 2011–2018.
 - **Status:** a slice of a post-hoc rule, about 8 trades a year, and 2026 rests on 16 trades. Not forward-tested.
 
+## Stop placement for the 10:30 rule (exploratory)
+
+Script: `scripts/research/rule_1030_stops.py`. Outputs: `rule_1030_stops/`.
+- The rule: SOXL 3–4% from its open at 10:30, go with it, exit 15:55. Each stop variant is tested on the same 346 trades over 2011–2026, case B.
+
+| Stop | Average stop distance | Average per trade | Win rate | Worst | Max drawdown | Per unit of risk (R) | R by era |
+|---|---|---|---|---|---|---|---|
+| None | — | +0.44% | 54% | −15.3% | −57% | — | — |
+| SOXL's open (as found) | 3.5% | +0.36% | 52% | −4.3% | −31% | 0.10 | 0.07 / 0.11 / 0.22 |
+| Fixed 3% | 3.0% | +0.36% | 51% | −3.5% | −27% | 0.12 | 0.11 / 0.14 / 0.03 |
+| Fixed 2.5% | 2.5% | +0.35% | 49% | −3.0% | −23% | 0.14 | 0.11 / 0.17 / −0.08 |
+| Fixed 2% | 2.0% | +0.26% | 44% | −2.6% | −22% | 0.13 | 0.12 / 0.15 / 0.01 |
+| Half the morning move retraced | 1.7% | +0.25% | 42% | −2.5% | −17% | 0.14 | 0.13 / 0.16 / 0.08 |
+| Fixed 1.5% | 1.5% | +0.26% | 39% | −2.2% | −18% | **0.18** | 0.15 / 0.20 / 0.14 |
+| Fixed 1% | 1.0% | +0.13% | 30% | −1.7% | −30% | 0.13 | 0.11 / 0.17 / −0.33 |
+
+- **Same position size every trade:** the wide stops (the open, or 2.5–3%) earn the most per trade. Tighter stops get shaken out by ordinary SOXL noise: 55% of trades are stopped at 1.5%, and 68% at 1%.
+- **Same dollar risk every trade:** a 1.5% stop earns the most per unit of risk (0.18 R, positive in every era), but needs a position about 2.3× larger.
+- **Stop slippage:** an extra 1 cent per stop fill (case S) costs only 0.01–0.02% a trade.
+- **Status:** seven variants tried on the same data; exploratory.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -527,6 +548,7 @@ The log also prints the S15 kill-switch state: ON while the last 60 S3-01 signal
 - `orb_best/`: 480-combination search on 2019–2025, the one-time 2011–2018 test, and the deep-history diagnostics.
 - `holdout_2026/`: the one-time 2026 holdout test of S15 and the context rules (summary, S15 by month, trades, verdict).
 - `midday_trend/`: the midday trend-check grid (24 cells × three eras).
+- `rule_1030_stops/`: stop placement for the 10:30 rule (per trade and per unit of risk, by era).
 - `trend_day_predictors/`: trend-day odds by pre-open and 09:45 conditions and hot-flag counts, and the 10:30 rule split by flags.
 - `intraday_trend_odds/`: live odds by check time and move so far (`odds.csv` per era, `pooled.csv`), how much of trend days' move is done at each check, the flip-at-the-open test, and the luck check (`luck_check*.csv`).
 - `output/`: the supplementary spread table and the event calendar.
