@@ -445,7 +445,7 @@ Script: `scripts/research/intraday_trend_odds.py`. Outputs: `intraday_trend_odds
 ## Knowing earlier: pre-open flags for trend days (exploratory)
 
 Script: `scripts/research/trend_day_predictors.py`. Outputs: `trend_day_predictors/`.
-- Every condition is built from trailing data only.
+- Every condition is built from trailing data only. The 2026 run loads history from October 2024, so the 1-year volatility comparison is defined for every 2026 session. An earlier version loaded too little history, which left that flag off until about March 2026.
 - The flags come from the 2019–2025 conditions analysis above. The thresholds are round numbers fixed for this run. 2011–2018 and 2026 played no part in choosing the flags.
 
 **The four pre-open flags**, each known by 09:30:
@@ -459,12 +459,12 @@ Script: `scripts/research/trend_day_predictors.py`. Outputs: `trend_day_predicto
 | Pre-open flags | Trend-day rate | Share of days |
 |---|---|---|
 | All days | 10% / 20% / 31% | — |
-| 0 flags | 4% / 12% / 9% | 47% / 37% / 12% |
-| 1 | 10% / 17% / 23% | 31% / 34% / 34% |
-| 2 | 16% / 30% / 40% | 16% / 17% / 31% |
-| 3 or 4 | **35% / 43% / 42%** | 6% / 12% / 23% |
+| 0 flags | 4% / 12% / 6% | 47% / 37% / 9% |
+| 1 | 10% / 17% / 26% | 31% / 34% / 27% |
+| 2 | 16% / 30% / 31% | 16% / 17% / 36% |
+| 3 or 4 | **35% / 43% / 44%** | 6% / 12% / 27% |
 
-- **Each flag on its own raises the odds in all three eras.** The strongest are a hot volatility regime (19% / 36% / 41% against 5% / 13% / 18% in a calm one) and QQQ below its 50-day average (21% / 36% / 33% against 5% / 14% / 29%).
+- **Each flag on its own raises the odds in all three eras.** The strongest are a hot volatility regime (19% / 36% / 37% against 5% / 13% / 13% in a calm one) and QQQ below its 50-day average (21% / 36% / 33% against 5% / 14% / 29%).
 - **By 09:45:** a first-15-minute range at least 1.25× its 20-day average gives 16% / 31% / 46% trend days, against 6% / 15% / 19% when it is narrow.
 - **Busy pre-market and event days help less.** These are measurable from 2019 only: busy pre-market 28% / 36%, event days 23% / 36%.
 
@@ -498,6 +498,18 @@ Script: `scripts/research/rule_1030_stops.py`. Outputs: `rule_1030_stops/`.
 - **Same dollar risk every trade:** a 1.5% stop earns the most per unit of risk (0.18 R, positive in every era), but needs a position about 2.3× larger.
 - **Stop slippage:** an extra 1 cent per stop fill (case S) costs only 0.01–0.02% a trade.
 - **Status:** seven variants tried on the same data; exploratory.
+
+**Combined with the pre-open flags** (two or more of the four flags in "Knowing earlier"):
+
+| Days, stop | Trades | Win rate | Average per trade | Per unit of risk (R) | Worst | Max drawdown | R by era |
+|---|---|---|---|---|---|---|---|
+| All days, open stop (as found) | 346 | 52% | +0.36% | 0.10 | −4.3% | −31% | 0.07 / 0.11 / 0.22 |
+| All days, fixed 1.5% | 346 | 39% | +0.26% | 0.18 | −2.2% | −18% | 0.15 / 0.20 / 0.14 |
+| 2+ flags, open stop | 119 | 54% | +0.67% | 0.18 | −4.3% | −23% | 0.18 / 0.16 / 0.37 |
+| 2+ flags, fixed 1.5% | 119 | 34% | +0.40% | **0.27** | −2.2% | −17% | 0.31 / 0.27 / 0.05 |
+
+- **The combination earns the most per unit of risk, but it trades only about 8 times a year.** Taking every setup with the 1.5% stop earns more in total, because days with 0–1 flags still made 0.13 R.
+- **In 2026 the 1.5% stop was too tight for flagged days:** 0.05 R against 0.37 R with the open stop, over 10 trades. SOXL's daily ranges in 2026 were the widest in the sample.
 
 ## What is being tracked forward
 

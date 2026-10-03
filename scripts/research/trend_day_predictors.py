@@ -96,7 +96,7 @@ def main() -> None:
     cms = {"B": C.cost_model(C.COMMISSION_B)}
     rows, scores, rule, drive = [], [], [], []
     for era, start, end in ERAS:
-        ctx = C.Context(start="2025-10-01" if era == "2026" else "2010-06-01" if era == "2011-2018" else "2018-01-02",
+        ctx = C.Context(start="2024-10-01" if era == "2026" else "2010-06-01" if era == "2011-2018" else "2018-01-02",
                         end=end)
         df = features(ctx, start)
         df = df[df.index <= end]
