@@ -523,6 +523,44 @@ Script: `scripts/research/rule_1030_stops.py`. Outputs: `rule_1030_stops/`.
 - Taking every setup at the same risk has the best ratio of profit to drawdown and the most even results across eras.
 - Sizing up on flagged days adds profit, but adds drawdown faster. Risking more on every trade would do the same job with a better ratio.
 
+## Catching the trend earlier (exploratory)
+
+Script: `scripts/research/early_trend.py`. Outputs: `early_trend/`.
+
+**How early the direction shows, on days that end as trend days** (hindsight; `direction_on_trend_days.csv`). Share of trend days on which the direction was already right, 2011–2018 / 2019–2025 / 2026:
+
+| Seen at | Direction right | Already 2%+ that way on SOXL |
+|---|---|---|
+| Opening gap | 52% / 54% / 47% | — |
+| 09:35 | 75% / 67% / 72% | 21% / 17% / 30% |
+| 09:45 | 81% / 77% / 75% | 38% / 37% / 53% |
+| 10:00 | 85% / 82% / 88% | 49% / 55% / 70% |
+| 10:30 | 91% / 86% / 95% | 68% / 70% / 84% |
+
+- **The gap's direction says nothing about the trend's direction.**
+- **The move from the open does:** it is right on about four in five eventual trend days by 09:45. Early moves on days that stay quiet are the false starts.
+
+**Earlier entries with the 1.5% stop** (`entries.csv`; 24 cells, all reported). Before 10:30, going with the move paid only when it agreed with the opening gap. Moves against the gap lost at 09:45 and 10:00 in most eras.
+
+| Entry | With the gap: R by era | Against the gap: R by era |
+|---|---|---|
+| 09:45, 2–3% | 0.04 / 0.42 / 0.51 | −0.39 / 0.37 / −0.07 |
+| 10:00, 3–4% | 0.27 / 0.28 / 0.38 | −0.20 / 0.18 / −0.38 |
+
+**Cascade** (`cascade.csv`; designed after seeing the grid above). Take the first that applies, one trade a day, 1.5% stop, exit 15:55:
+1. 09:45, SOXL 2–3% from its open in the gap's direction.
+2. 10:00, 3–4% in the gap's direction.
+3. 10:30, 3–4% either way.
+
+| Plan | Trades a year | Win rate | R a trade | R a year | Max drawdown | R by era |
+|---|---|---|---|---|---|---|
+| 10:30 rule alone | 23 | 39% | 0.18 | +4.0 | −12.2 R | 0.15 / 0.20 / 0.14 |
+| Cascade | 39 | 38% | 0.21 | +8.1 | −25.2 R | 0.07 / 0.30 / 0.39 |
+
+- **What the cascade changes:** it roughly doubles both the yearly profit and the drawdown.
+- **Where it comes from:** the early entries carry it after 2019, but they were weak in 2011–2018 (0.04 R at 09:45).
+- **Status:** post-hoc, not forward-tested.
+
 ## What is being tracked forward
 
 `scripts/research/paper_log.py` runs after each close and appends to `paper_log.csv`. The tracked rules are:
@@ -572,6 +610,7 @@ The log also prints the S15 kill-switch state: ON while the last 60 S3-01 signal
 - `orb_best/`: 480-combination search on 2019–2025, the one-time 2011–2018 test, and the deep-history diagnostics.
 - `holdout_2026/`: the one-time 2026 holdout test of S15 and the context rules (summary, S15 by month, trades, verdict).
 - `midday_trend/`: the midday trend-check grid (24 cells × three eras).
+- `early_trend/`: how early the direction shows on trend days, earlier entries with and against the gap, and the early-entry cascade.
 - `rule_1030_stops/`: stop placement for the 10:30 rule (per trade and per unit of risk, by era).
 - `trend_day_predictors/`: trend-day odds by pre-open and 09:45 conditions and hot-flag counts, and the 10:30 rule split by flags.
 - `intraday_trend_odds/`: live odds by check time and move so far (`odds.csv` per era, `pooled.csv`), how much of trend days' move is done at each check, the flip-at-the-open test, and the luck check (`luck_check*.csv`).
